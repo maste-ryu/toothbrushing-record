@@ -58,12 +58,15 @@ assert.match(settingsHtml, /id="report-settings-form"/);
 assert.match(settingsHtml, /id="usage-days-form"/);
 assert.match(settingsHtml, /id="usage-day-mode"/);
 assert.match(settingsHtml, /id="calendar-form"/);
+assert.match(settingsHtml, /id="student-profiles-form"/);
+assert.match(settingsHtml, /id="student-profile-term"/);
+assert.match(settingsHtml, /accept="image\/jpeg,image\/png,image\/webp"/);
 const htmlIds = [...settingsHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(htmlIds).size, htmlIds.length, "settings.html contains duplicate ids");
 assert.match(printCss, /@page\s*{[^}]*size:\s*A4 landscape/s);
 assert.match(printCss, /@media print/);
 
-for (const table of ["app_users", "app_settings", "brushing_records", "school_calendar", "report_settings"]) {
+for (const table of ["app_users", "app_settings", "brushing_records", "school_calendar", "report_settings", "student_profiles"]) {
   assert.match(schema, new RegExp(`create table if not exists public\\.${table}`));
   assert.match(schema, new RegExp(`alter table public\\.${table} enable row level security`));
 }
@@ -74,6 +77,11 @@ assert.match(schema, /usage_day_mode in \('weekdays', 'everyday'\)/);
 assert.match(schema, /app_settings_teacher_update/);
 assert.match(schema, /private\.has_role\('kiosk'\)/);
 assert.match(schema, /private\.has_role\('teacher'\)/);
+assert.match(schema, /'student-photos',[\s\S]*false,[\s\S]*2097152/);
+assert.match(schema, /student_profiles_kiosk_select_current/);
+assert.match(schema, /student_photos_kiosk_select_current/);
+assert.match(schema, /student_photos_teacher_insert/);
+assert.match(schema, /student_profiles_setting_student_key unique \(report_setting_id, student_no\)/);
 
 assert.doesNotMatch(allClientSource, /service_role\s*[:=]\s*["']/i);
 assert.doesNotMatch(allClientSource, /sb_secret_[a-z0-9_-]{10,}/i);

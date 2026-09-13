@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import {
   calculateDailyProgress,
   calculateStudentStats,
+  formatStudentReportLabel,
   formatRate,
+  getStudentDisplayName,
   getMonthDates,
   getTaipeiIsoDate,
   getWeekdayLabel,
   isDefaultSchoolDay,
   resolveSchoolDay,
+  validateStudentPhoto,
 } from "../js/common.js";
 
 assert.equal(getTaipeiIsoDate(new Date("2026-09-13T15:59:59Z")), "2026-09-13");
@@ -19,6 +22,13 @@ assert.equal(isDefaultSchoolDay("2026-09-14"), true);
 assert.equal(isDefaultSchoolDay("2026-09-12", "everyday"), true);
 assert.equal(getMonthDates("2026-09").length, 30);
 assert.equal(getMonthDates("2028-02").length, 29);
+assert.equal(getStudentDisplayName(1, "小星"), "小星");
+assert.equal(getStudentDisplayName(2, "  "), "2號同學");
+assert.equal(formatStudentReportLabel(1, " 小星 "), "1號 小星");
+assert.equal(formatStudentReportLabel(2, ""), "2號");
+assert.equal(validateStudentPhoto({ type: "image/png", size: 2 * 1024 * 1024 }), "");
+assert.equal(validateStudentPhoto({ type: "image/gif", size: 10 }), "圖片格式只接受 JPEG、PNG 或 WebP。");
+assert.equal(validateStudentPhoto({ type: "image/jpeg", size: 2 * 1024 * 1024 + 1 }), "圖片不可超過 2 MB。");
 
 const calendarByDate = new Map([
   ["2026-09-14", { date: "2026-09-14", is_school_day: false, label: "特殊假日" }],

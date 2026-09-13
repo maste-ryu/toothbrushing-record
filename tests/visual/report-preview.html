@@ -55,7 +55,7 @@
       table.tHead.append(holidayRow);
       [1, 2].forEach((studentNo) => {
         const row = document.createElement("tr");
-        row.append(makeCell("th", `${studentNo}號`, "row-heading"));
+        row.append(makeCell("th", `${studentNo}號 ${studentNo === 1 ? "小星" : "小宇"}`, "row-heading"));
         days.forEach((day) => {
           const off = day === 28 || [5, 6, 12, 13, 19, 20, 26, 27].includes(day);
           const leave = studentNo === 2 && day === 7;
@@ -67,4 +67,3 @@
     </script>
   </body>
 </html>
-

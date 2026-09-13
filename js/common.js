@@ -1,5 +1,11 @@
 export const STUDENT_NUMBERS = Object.freeze([1, 2]);
 export const TAIPEI_TIME_ZONE = "Asia/Taipei";
+export const STUDENT_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+export const STUDENT_PHOTO_TYPES = Object.freeze({
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+});
 
 const taipeiDateFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: TAIPEI_TIME_ZONE,
@@ -30,6 +36,23 @@ export function getTaipeiYearMonth(now = new Date()) {
 
 export function formatTaipeiDisplayDate(now = new Date()) {
   return taipeiDisplayFormatter.format(now);
+}
+
+export function getStudentDisplayName(studentNo, displayName) {
+  const normalizedName = typeof displayName === "string" ? displayName.trim() : "";
+  return normalizedName || `${studentNo}號同學`;
+}
+
+export function formatStudentReportLabel(studentNo, displayName) {
+  const normalizedName = typeof displayName === "string" ? displayName.trim() : "";
+  return normalizedName ? `${studentNo}號 ${normalizedName}` : `${studentNo}號`;
+}
+
+export function validateStudentPhoto(file) {
+  if (!file) return "";
+  if (!Object.hasOwn(STUDENT_PHOTO_TYPES, file.type)) return "圖片格式只接受 JPEG、PNG 或 WebP。";
+  if (file.size > STUDENT_PHOTO_MAX_BYTES) return "圖片不可超過 2 MB。";
+  return "";
 }
 
 export function parseIsoDate(isoDate) {

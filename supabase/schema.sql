@@ -1,4 +1,4 @@
--- 潔牙記錄系統 V1.0
+-- 潔牙記錄系統 V1.1
 -- 請以 Supabase Dashboard > SQL Editor 執行本檔。
 -- 本檔不建立 Auth 帳號，也不包含任何密碼或 service_role key。
 
@@ -71,11 +71,45 @@ create table if not exists public.report_settings (
     exclude using gist (daterange(effective_start, effective_end, '[]') with &&)
 );
 
+create table if not exists public.student_profiles (
+  id uuid primary key default gen_random_uuid(),
+  report_setting_id uuid not null references public.report_settings(id) on delete restrict,
+  student_no smallint not null constraint student_profiles_student_check check (student_no in (1, 2)),
+  display_name text not null
+    constraint student_profiles_display_name_check check (char_length(btrim(display_name)) between 1 and 30),
+  photo_path text
+    constraint student_profiles_photo_path_check check (
+      photo_path is null
+      or photo_path ~ '^[0-9a-f-]{36}/[12]/[0-9a-f-]{36}\.(jpg|png|webp)$'
+    ),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null,
+  constraint student_profiles_setting_student_key unique (report_setting_id, student_no)
+);
+
+create index if not exists student_profiles_report_setting_idx
+  on public.student_profiles (report_setting_id);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'student-photos',
+  'student-photos',
+  false,
+  2097152,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
 comment on table public.app_users is 'Supabase Auth 使用者的應用程式角色；不保存密碼。';
 comment on table public.brushing_records is '學生每日第一筆有效潔牙或請假狀態。';
 comment on table public.school_calendar is '覆寫每週使用模式的特殊上課或非上課日期。';
 comment on table public.app_settings is '全系統單例設定；決定一般每週使用日。';
 comment on table public.report_settings is '依學期保存的月報行政資料。';
+comment on table public.student_profiles is '按學期保存兩位學生的顯示名稱與私人圖片路徑。';
 
 create or replace function private.taipei_today()
 returns date
@@ -123,6 +157,36 @@ as $$
       ),
       false
     ) or extract(isodow from target_date) between 1 and 5
+  );
+$$;
+
+create or replace function private.is_current_report_setting(setting_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.report_settings as settings
+    where settings.id = setting_id
+      and private.taipei_today() between settings.effective_start and settings.effective_end
+  );
+$$;
+
+create or replace function private.can_read_current_student_photo(object_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.student_profiles as profile
+    where profile.photo_path = object_name
+      and private.is_current_report_setting(profile.report_setting_id)
   );
 $$;
 
@@ -185,6 +249,11 @@ create trigger report_settings_touch_metadata
 before insert or update on public.report_settings
 for each row execute function private.touch_teacher_owned_row();
 
+drop trigger if exists student_profiles_touch_metadata on public.student_profiles;
+create trigger student_profiles_touch_metadata
+before insert or update on public.student_profiles
+for each row execute function private.touch_teacher_owned_row();
+
 drop trigger if exists brushing_records_set_recorded_at on public.brushing_records;
 create trigger brushing_records_set_recorded_at
 before insert on public.brushing_records
@@ -193,18 +262,23 @@ for each row execute function private.set_recorded_at();
 revoke all on function private.taipei_today() from public, anon;
 revoke all on function private.has_role(text) from public, anon;
 revoke all on function private.is_school_day(date) from public, anon;
+revoke all on function private.is_current_report_setting(uuid) from public, anon;
+revoke all on function private.can_read_current_student_photo(text) from public, anon;
 revoke all on function private.touch_app_user() from public, anon, authenticated;
 revoke all on function private.touch_teacher_owned_row() from public, anon, authenticated;
 revoke all on function private.set_recorded_at() from public, anon, authenticated;
 grant execute on function private.taipei_today() to authenticated;
 grant execute on function private.has_role(text) to authenticated;
 grant execute on function private.is_school_day(date) to authenticated;
+grant execute on function private.is_current_report_setting(uuid) to authenticated;
+grant execute on function private.can_read_current_student_photo(text) to authenticated;
 
 revoke all on table public.app_users from anon, authenticated;
 revoke all on table public.brushing_records from anon, authenticated;
 revoke all on table public.school_calendar from anon, authenticated;
 revoke all on table public.app_settings from anon, authenticated;
 revoke all on table public.report_settings from anon, authenticated;
+revoke all on table public.student_profiles from anon, authenticated;
 
 grant select on table public.app_users to authenticated;
 grant select on table public.brushing_records to authenticated;
@@ -213,12 +287,14 @@ grant select, insert, update, delete on table public.school_calendar to authenti
 grant select on table public.app_settings to authenticated;
 grant update (usage_day_mode) on table public.app_settings to authenticated;
 grant select, insert, update, delete on table public.report_settings to authenticated;
+grant select, insert, update, delete on table public.student_profiles to authenticated;
 
 alter table public.app_users enable row level security;
 alter table public.brushing_records enable row level security;
 alter table public.school_calendar enable row level security;
 alter table public.app_settings enable row level security;
 alter table public.report_settings enable row level security;
+alter table public.student_profiles enable row level security;
 
 drop policy if exists app_users_select_self on public.app_users;
 create policy app_users_select_self
@@ -361,5 +437,105 @@ on public.report_settings
 for delete
 to authenticated
 using (private.has_role('teacher'));
+
+drop policy if exists student_profiles_teacher_select on public.student_profiles;
+create policy student_profiles_teacher_select
+on public.student_profiles
+for select
+to authenticated
+using (private.has_role('teacher'));
+
+drop policy if exists student_profiles_kiosk_select_current on public.student_profiles;
+create policy student_profiles_kiosk_select_current
+on public.student_profiles
+for select
+to authenticated
+using (
+  private.has_role('kiosk')
+  and private.is_current_report_setting(report_setting_id)
+);
+
+drop policy if exists student_profiles_teacher_insert on public.student_profiles;
+create policy student_profiles_teacher_insert
+on public.student_profiles
+for insert
+to authenticated
+with check (
+  private.has_role('teacher')
+  and updated_by = auth.uid()
+);
+
+drop policy if exists student_profiles_teacher_update on public.student_profiles;
+create policy student_profiles_teacher_update
+on public.student_profiles
+for update
+to authenticated
+using (private.has_role('teacher'))
+with check (
+  private.has_role('teacher')
+  and updated_by = auth.uid()
+);
+
+drop policy if exists student_profiles_teacher_delete on public.student_profiles;
+create policy student_profiles_teacher_delete
+on public.student_profiles
+for delete
+to authenticated
+using (private.has_role('teacher'));
+
+drop policy if exists student_photos_teacher_select on storage.objects;
+create policy student_photos_teacher_select
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'student-photos'
+  and private.has_role('teacher')
+);
+
+drop policy if exists student_photos_kiosk_select_current on storage.objects;
+create policy student_photos_kiosk_select_current
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'student-photos'
+  and private.has_role('kiosk')
+  and private.can_read_current_student_photo(name)
+);
+
+drop policy if exists student_photos_teacher_insert on storage.objects;
+create policy student_photos_teacher_insert
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'student-photos'
+  and private.has_role('teacher')
+);
+
+drop policy if exists student_photos_teacher_update on storage.objects;
+create policy student_photos_teacher_update
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'student-photos'
+  and private.has_role('teacher')
+)
+with check (
+  bucket_id = 'student-photos'
+  and private.has_role('teacher')
+);
+
+drop policy if exists student_photos_teacher_delete on storage.objects;
+create policy student_photos_teacher_delete
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'student-photos'
+  and private.has_role('teacher')
+);
 
 commit;

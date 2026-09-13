@@ -1,5 +1,13 @@
 import { requireAppRole, signInForRole, signOut } from "./auth.js";
-import { getMonthBounds, getTaipeiYearMonth, getWeekdayLabel } from "./common.js";
+import {
+  getMonthBounds,
+  getTaipeiIsoDate,
+  getTaipeiYearMonth,
+  getWeekdayLabel,
+  STUDENT_NUMBERS,
+  STUDENT_PHOTO_TYPES,
+  validateStudentPhoto,
+} from "./common.js";
 import { isSupabaseConfigured, teacherClient } from "./supabase.js";
 
 const loginPanel = document.querySelector("#teacher-login");
@@ -16,10 +24,20 @@ const calendarForm = document.querySelector("#calendar-form");
 const calendarMessage = document.querySelector("#calendar-message");
 const calendarList = document.querySelector("#calendar-list");
 const calendarMonth = document.querySelector("#calendar-month");
+const studentProfileTerm = document.querySelector("#student-profile-term");
+const studentProfilesEmpty = document.querySelector("#student-profiles-empty");
+const studentProfilesForm = document.querySelector("#student-profiles-form");
+const studentProfilesMessage = document.querySelector("#student-profiles-message");
 
 let reportSettingsRows = [];
 let calendarRows = [];
 let usageDayMode = "weekdays";
+let studentProfileRows = new Map();
+let studentProfileLoadSequence = 0;
+const selectedStudentPhotos = new Map();
+const removedStudentPhotos = new Set();
+const studentPhotoPreviewUrls = new Map();
+const STUDENT_PHOTO_BUCKET = "student-photos";
 
 function setLoginState(showLogin, message = "") {
   loginPanel.hidden = !showLogin;
@@ -51,6 +69,194 @@ function makeEmptyRow(columnCount, text) {
   cell.textContent = text;
   row.append(cell);
   return row;
+}
+
+function revokeStudentPhotoPreview(studentNo) {
+  const url = studentPhotoPreviewUrls.get(studentNo);
+  if (url) URL.revokeObjectURL(url);
+  studentPhotoPreviewUrls.delete(studentNo);
+}
+
+function revokeAllStudentPhotoPreviews() {
+  STUDENT_NUMBERS.forEach(revokeStudentPhotoPreview);
+}
+
+function showStudentPhotoPreview(studentNo, blob = null) {
+  revokeStudentPhotoPreview(studentNo);
+  const image = document.querySelector(`#student-photo-preview-${studentNo}`);
+  const fallback = document.querySelector(`#student-photo-fallback-${studentNo}`);
+
+  if (blob) {
+    const url = URL.createObjectURL(blob);
+    studentPhotoPreviewUrls.set(studentNo, url);
+    image.src = url;
+    image.hidden = false;
+    fallback.hidden = true;
+  } else {
+    image.removeAttribute("src");
+    image.hidden = true;
+    fallback.hidden = false;
+  }
+}
+
+function setStudentPhotoStatus(studentNo, message) {
+  document.querySelector(`#student-photo-status-${studentNo}`).textContent = message;
+}
+
+function getSelectedReportSetting() {
+  return reportSettingsRows.find((row) => row.id === studentProfileTerm.value) || null;
+}
+
+function populateStudentProfileTermOptions() {
+  const previousValue = studentProfileTerm.value;
+  studentProfileTerm.replaceChildren();
+
+  for (const setting of reportSettingsRows) {
+    const option = document.createElement("option");
+    option.value = setting.id;
+    option.textContent = `${setting.academic_year}學年度／第${setting.semester}學期／${setting.class_name}`;
+    studentProfileTerm.append(option);
+  }
+
+  const today = getTaipeiIsoDate();
+  const currentSetting = reportSettingsRows.find(
+    (setting) => setting.effective_start <= today && setting.effective_end >= today,
+  );
+  const nextValue = reportSettingsRows.some((setting) => setting.id === previousValue)
+    ? previousValue
+    : currentSetting?.id || reportSettingsRows[0]?.id || "";
+
+  studentProfileTerm.value = nextValue;
+  studentProfileTerm.disabled = reportSettingsRows.length === 0;
+  studentProfilesEmpty.hidden = reportSettingsRows.length > 0;
+  studentProfilesForm.hidden = reportSettingsRows.length === 0;
+}
+
+function resetStudentProfileEditor() {
+  selectedStudentPhotos.clear();
+  removedStudentPhotos.clear();
+  revokeAllStudentPhotoPreviews();
+
+  for (const studentNo of STUDENT_NUMBERS) {
+    document.querySelector(`#student-name-${studentNo}`).value = "";
+    document.querySelector(`#student-photo-${studentNo}`).value = "";
+    showStudentPhotoPreview(studentNo);
+    setStudentPhotoStatus(studentNo, "尚未上傳圖片");
+  }
+  setFormMessage(studentProfilesMessage);
+}
+
+async function loadStudentProfiles() {
+  const setting = getSelectedReportSetting();
+  const sequence = ++studentProfileLoadSequence;
+  resetStudentProfileEditor();
+  studentProfileRows = new Map();
+
+  if (!setting) return;
+  setFormMessage(studentProfilesMessage, "正在讀取學生資料…");
+
+  const { data, error } = await teacherClient
+    .from("student_profiles")
+    .select("id, report_setting_id, student_no, display_name, photo_path")
+    .eq("report_setting_id", setting.id)
+    .order("student_no");
+  if (error) throw error;
+  if (sequence !== studentProfileLoadSequence) return;
+
+  studentProfileRows = new Map((data || []).map((row) => [row.student_no, row]));
+  for (const studentNo of STUDENT_NUMBERS) {
+    const row = studentProfileRows.get(studentNo);
+    document.querySelector(`#student-name-${studentNo}`).value = row?.display_name || "";
+    setStudentPhotoStatus(studentNo, row?.photo_path ? "正在讀取目前圖片…" : "尚未上傳圖片");
+  }
+
+  await Promise.all(
+    STUDENT_NUMBERS.map(async (studentNo) => {
+      const row = studentProfileRows.get(studentNo);
+      if (!row?.photo_path) return;
+      const { data: blob, error: downloadError } = await teacherClient.storage
+        .from(STUDENT_PHOTO_BUCKET)
+        .download(row.photo_path);
+      if (sequence !== studentProfileLoadSequence) return;
+      if (downloadError) {
+        console.warn(`讀取 ${studentNo} 號學生圖片失敗`, downloadError);
+        setStudentPhotoStatus(studentNo, "圖片暫時無法預覽，可重新選擇圖片覆蓋。 ");
+        return;
+      }
+      showStudentPhotoPreview(studentNo, blob);
+      setStudentPhotoStatus(studentNo, "目前已有圖片");
+    }),
+  );
+
+  if (sequence === studentProfileLoadSequence) setFormMessage(studentProfilesMessage);
+}
+
+function handleStudentPhotoSelection(studentNo, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const validationMessage = validateStudentPhoto(file);
+  if (validationMessage) {
+    input.value = "";
+    setFormMessage(studentProfilesMessage, `${studentNo}號：${validationMessage}`, true);
+    return;
+  }
+
+  selectedStudentPhotos.set(studentNo, file);
+  removedStudentPhotos.delete(studentNo);
+  showStudentPhotoPreview(studentNo, file);
+  setStudentPhotoStatus(studentNo, `已選擇 ${file.name}，儲存後上傳。`);
+  setFormMessage(studentProfilesMessage);
+}
+
+function removeStudentPhoto(studentNo) {
+  selectedStudentPhotos.delete(studentNo);
+  removedStudentPhotos.add(studentNo);
+  document.querySelector(`#student-photo-${studentNo}`).value = "";
+  showStudentPhotoPreview(studentNo);
+  setStudentPhotoStatus(studentNo, "儲存後移除圖片");
+  setFormMessage(studentProfilesMessage);
+}
+
+async function saveStudentProfile(setting, studentNo) {
+  const existing = studentProfileRows.get(studentNo);
+  const file = selectedStudentPhotos.get(studentNo);
+  const oldPath = existing?.photo_path || null;
+  let nextPath = removedStudentPhotos.has(studentNo) ? null : oldPath;
+  let uploadedPath = null;
+
+  if (file) {
+    const extension = STUDENT_PHOTO_TYPES[file.type];
+    nextPath = `${setting.id}/${studentNo}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await teacherClient.storage.from(STUDENT_PHOTO_BUCKET).upload(nextPath, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+    if (uploadError) throw uploadError;
+    uploadedPath = nextPath;
+  }
+
+  const payload = {
+    report_setting_id: setting.id,
+    student_no: studentNo,
+    display_name: document.querySelector(`#student-name-${studentNo}`).value.trim(),
+    photo_path: nextPath,
+  };
+
+  const { error: saveError } = await teacherClient
+    .from("student_profiles")
+    .upsert(payload, { onConflict: "report_setting_id,student_no" });
+  if (saveError) {
+    if (uploadedPath) {
+      const { error: cleanupError } = await teacherClient.storage.from(STUDENT_PHOTO_BUCKET).remove([uploadedPath]);
+      if (cleanupError) console.warn("清除未採用的新圖片失敗", cleanupError);
+    }
+    throw saveError;
+  }
+
+  if (oldPath && oldPath !== nextPath) {
+    const { error: removeError } = await teacherClient.storage.from(STUDENT_PHOTO_BUCKET).remove([oldPath]);
+    if (removeError) console.warn("學生資料已儲存，但舊圖片清除失敗", removeError);
+  }
 }
 
 function renderReportSettingsList() {
@@ -86,6 +292,7 @@ async function loadReportSettings() {
   if (error) throw error;
   reportSettingsRows = data || [];
   renderReportSettingsList();
+  populateStudentProfileTermOptions();
   setFormMessage(reportSettingsMessage);
 }
 
@@ -141,6 +348,7 @@ reportSettingsForm.addEventListener("submit", async (event) => {
 
     resetReportSettingsForm();
     await loadReportSettings();
+    await loadStudentProfiles();
     setFormMessage(reportSettingsMessage, "行政資料已儲存。 ");
   } catch (error) {
     console.error("儲存行政資料失敗", error);
@@ -166,6 +374,67 @@ document.querySelector("#new-report-setting").addEventListener("click", () => {
   document.querySelector("#school-name").focus();
 });
 document.querySelector("#cancel-report-setting").addEventListener("click", resetReportSettingsForm);
+
+studentProfileTerm.addEventListener("change", () => loadStudentProfiles().catch(handleInitialLoadError));
+
+for (const studentNo of STUDENT_NUMBERS) {
+  document.querySelector(`#student-photo-${studentNo}`).addEventListener("change", (event) => {
+    handleStudentPhotoSelection(studentNo, event.currentTarget);
+  });
+}
+
+studentProfilesForm.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action='remove-student-photo']");
+  if (button) removeStudentPhoto(Number(button.dataset.student));
+});
+
+studentProfilesForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const setting = getSelectedReportSetting();
+  if (!setting) {
+    setFormMessage(studentProfilesMessage, "請先建立並選擇適用學期。", true);
+    return;
+  }
+
+  const missingName = STUDENT_NUMBERS.find(
+    (studentNo) => !document.querySelector(`#student-name-${studentNo}`).value.trim(),
+  );
+  if (missingName) {
+    setFormMessage(studentProfilesMessage, `請輸入 ${missingName} 號學生的顯示姓名。`, true);
+    document.querySelector(`#student-name-${missingName}`).focus();
+    return;
+  }
+
+  const submitButton = studentProfilesForm.querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  setFormMessage(studentProfilesMessage, "正在儲存姓名與圖片…");
+
+  try {
+    const results = await Promise.allSettled(
+      STUDENT_NUMBERS.map((studentNo) => saveStudentProfile(setting, studentNo)),
+    );
+    const failedStudents = STUDENT_NUMBERS.filter((_, index) => results[index].status === "rejected");
+    for (const result of results) {
+      if (result.status === "rejected") console.error("儲存學生資料失敗", result.reason);
+    }
+
+    await loadStudentProfiles();
+    if (failedStudents.length) {
+      setFormMessage(
+        studentProfilesMessage,
+        `${failedStudents.join("、")}號資料儲存失敗；其他已成功的資料已保留，請檢查圖片與網路後再試一次。`,
+        true,
+      );
+    } else {
+      setFormMessage(studentProfilesMessage, "兩位學生的姓名與圖片設定已儲存。 ");
+    }
+  } catch (error) {
+    console.error("重新讀取學生資料失敗", error);
+    setFormMessage(studentProfilesMessage, "儲存後無法重新讀取資料，請重新整理確認。", true);
+  } finally {
+    submitButton.disabled = false;
+  }
+});
 
 async function loadUsageDays() {
   setFormMessage(usageDaysMessage, "正在讀取每週使用日…");
@@ -335,12 +604,13 @@ function handleInitialLoadError(error) {
   console.error("讀取設定失敗", error);
   setFormMessage(usageDaysMessage, "資料讀取失敗，請檢查網路後重新整理。", true);
   setFormMessage(reportSettingsMessage, "資料讀取失敗，請檢查網路後重新整理。", true);
+  setFormMessage(studentProfilesMessage, "學生資料讀取失敗，請檢查網路後重新整理。", true);
   setFormMessage(calendarMessage, "資料讀取失敗，請檢查網路後重新整理。", true);
 }
 
 async function loadAllSettings() {
-  await loadUsageDays();
-  await Promise.all([loadReportSettings(), loadCalendar()]);
+  await Promise.all([loadUsageDays(), loadReportSettings(), loadCalendar()]);
+  await loadStudentProfiles();
 }
 
 loginForm.addEventListener("submit", async (event) => {
@@ -372,9 +642,13 @@ document.querySelector("#teacher-logout").addEventListener("click", async () => 
   } catch (error) {
     console.error("登出失敗", error);
   } finally {
+    studentProfileLoadSequence += 1;
+    revokeAllStudentPhotoPreviews();
     setLoginState(true);
   }
 });
+
+window.addEventListener("beforeunload", revokeAllStudentPhotoPreviews);
 
 async function initialize() {
   calendarMonth.value = getTaipeiYearMonth();

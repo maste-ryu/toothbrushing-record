@@ -1,6 +1,7 @@
 import { requireAppRole, signInForRole, signOut } from "./auth.js";
 import {
   calculateStudentStats,
+  formatStudentReportLabel,
   getMonthBounds,
   getTaipeiIsoDate,
   getTaipeiYearMonth,
@@ -53,10 +54,11 @@ function getDateClasses(isoDate, schoolInfo, isFuture) {
   return classes;
 }
 
-function renderReport({ yearMonth, dates, calendarRows, recordRows, settings, usageDayMode }) {
+function renderReport({ yearMonth, dates, calendarRows, recordRows, profileRows, settings, usageDayMode }) {
   const today = getTaipeiIsoDate();
   const calendarByDate = new Map(calendarRows.map((row) => [row.date, row]));
   const recordsByKey = new Map(recordRows.map((row) => [`${row.student_no}:${row.record_date}`, row]));
+  const profilesByStudent = new Map(profileRows.map((row) => [row.student_no, row]));
   const [year, month] = yearMonth.split("-").map(Number);
 
   reportSchool.textContent = settings?.school_name || "尚未設定學校名稱";
@@ -111,7 +113,11 @@ function renderReport({ yearMonth, dates, calendarRows, recordRows, settings, us
 
   for (const studentNo of STUDENT_NUMBERS) {
     const row = document.createElement("tr");
-    const heading = createCell("th", `${studentNo}號`, ["row-heading"]);
+    const heading = createCell(
+      "th",
+      formatStudentReportLabel(studentNo, profilesByStudent.get(studentNo)?.display_name),
+      ["row-heading"],
+    );
     heading.scope = "row";
     row.append(heading);
 
@@ -167,7 +173,7 @@ async function loadReport() {
       teacherClient.from("school_calendar").select("date, is_school_day, label").gte("date", firstDate).lte("date", lastDate).order("date"),
       teacherClient
         .from("report_settings")
-        .select("school_name, class_name, academic_year, semester, effective_start, effective_end, form_title")
+        .select("id, school_name, class_name, academic_year, semester, effective_start, effective_end, form_title")
         .lte("effective_start", firstDate)
         .gte("effective_end", firstDate)
         .order("effective_start", { ascending: false })
@@ -182,11 +188,24 @@ async function loadReport() {
     if (appSettingsResult.error) throw appSettingsResult.error;
     if (sequence !== reportLoadSequence) return;
 
+    let profileRows = [];
+    if (settingsResult.data) {
+      const profilesResult = await teacherClient
+        .from("student_profiles")
+        .select("student_no, display_name")
+        .eq("report_setting_id", settingsResult.data.id)
+        .order("student_no");
+      if (profilesResult.error) throw profilesResult.error;
+      profileRows = profilesResult.data || [];
+    }
+    if (sequence !== reportLoadSequence) return;
+
     renderReport({
       yearMonth,
       dates,
       calendarRows: calendarResult.data || [],
       recordRows: recordsResult.data || [],
+      profileRows,
       settings: settingsResult.data,
       usageDayMode: appSettingsResult.data.usage_day_mode,
     });

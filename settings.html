@@ -12,7 +12,7 @@
         <div class="auth-icon" aria-hidden="true">🔐</div>
         <p class="eyebrow">教師專區</p>
         <h1 id="teacher-login-title">登入管理設定</h1>
-        <p class="muted">只有教師帳號可以調整每週使用日、報表資料與特殊日期。</p>
+        <p class="muted">只有教師帳號可以調整學生資料、每週使用日、報表資料與特殊日期。</p>
         <form id="teacher-login-form" class="auth-form">
           <label>
             教師帳號
@@ -98,6 +98,65 @@
                 <tbody id="report-settings-list"></tbody>
               </table>
             </div>
+          </section>
+
+          <section class="settings-panel" aria-labelledby="student-profiles-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">座號資料</p>
+                <h2 id="student-profiles-title">學生姓名與圖片</h2>
+              </div>
+              <label class="inline-field">
+                適用學期
+                <select id="student-profile-term"></select>
+              </label>
+            </div>
+
+            <p class="muted">姓名與圖片按學期保存。圖片為選填，支援 JPEG、PNG、WebP，檔案上限 2 MB。</p>
+            <p id="student-profiles-empty" class="page-message">請先建立報表行政資料，再設定學生姓名與圖片。</p>
+
+            <form id="student-profiles-form" class="student-profiles-form" hidden>
+              <fieldset class="student-profile-editor" data-student-profile="1">
+                <legend>1號學生</legend>
+                <div class="profile-photo-preview" aria-label="1號學生圖片預覽">
+                  <img id="student-photo-preview-1" alt="1號學生圖片預覽" hidden />
+                  <span id="student-photo-fallback-1" aria-hidden="true">1</span>
+                </div>
+                <label>
+                  顯示姓名
+                  <input id="student-name-1" maxlength="30" autocomplete="off" required />
+                </label>
+                <label>
+                  選擇圖片
+                  <input id="student-photo-1" type="file" accept="image/jpeg,image/png,image/webp" />
+                </label>
+                <button class="secondary-button compact" type="button" data-action="remove-student-photo" data-student="1">移除圖片</button>
+                <p id="student-photo-status-1" class="muted profile-photo-status">尚未上傳圖片</p>
+              </fieldset>
+
+              <fieldset class="student-profile-editor" data-student-profile="2">
+                <legend>2號學生</legend>
+                <div class="profile-photo-preview" aria-label="2號學生圖片預覽">
+                  <img id="student-photo-preview-2" alt="2號學生圖片預覽" hidden />
+                  <span id="student-photo-fallback-2" aria-hidden="true">2</span>
+                </div>
+                <label>
+                  顯示姓名
+                  <input id="student-name-2" maxlength="30" autocomplete="off" required />
+                </label>
+                <label>
+                  選擇圖片
+                  <input id="student-photo-2" type="file" accept="image/jpeg,image/png,image/webp" />
+                </label>
+                <button class="secondary-button compact" type="button" data-action="remove-student-photo" data-student="2">移除圖片</button>
+                <p id="student-photo-status-2" class="muted profile-photo-status">尚未上傳圖片</p>
+              </fieldset>
+
+              <div class="form-actions wide-field">
+                <button class="primary-button" type="submit">儲存兩位學生資料</button>
+              </div>
+              <p id="student-profiles-message" class="form-message wide-field" role="status" aria-live="polite"></p>
+            </form>
           </section>
 
           <section class="settings-panel" aria-labelledby="usage-days-title">
