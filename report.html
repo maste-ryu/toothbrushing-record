@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>潔牙月報表</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/print.css" />
+  </head>
+  <body class="teacher-page">
+    <main class="teacher-shell">
+      <section id="teacher-login" class="auth-card teacher-auth" aria-labelledby="teacher-login-title">
+        <div class="auth-icon" aria-hidden="true">🔐</div>
+        <p class="eyebrow">教師專區</p>
+        <h1 id="teacher-login-title">登入查看月報</h1>
+        <p class="muted">月報與學生紀錄只提供已授權的教師帳號。</p>
+        <form id="teacher-login-form" class="auth-form">
+          <label>
+            教師帳號
+            <input name="email" type="email" autocomplete="username" required />
+          </label>
+          <label>
+            密碼
+            <input name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="primary-button" type="submit">登入</button>
+          <p id="teacher-login-message" class="form-message" role="alert" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="report-app" hidden>
+        <header class="teacher-toolbar no-print">
+          <div>
+            <p class="eyebrow">教師專區</p>
+            <h1>潔牙月報表</h1>
+          </div>
+          <nav class="toolbar-actions" aria-label="教師功能">
+            <a class="secondary-button button-link" href="settings.html">資料設定</a>
+            <button id="teacher-logout" class="ghost-button" type="button">登出</button>
+          </nav>
+        </header>
+
+        <section class="control-panel no-print" aria-label="報表選項">
+          <label>
+            報表月份
+            <input id="report-month" type="month" required />
+          </label>
+          <button id="load-report" class="primary-button" type="button">載入月報</button>
+          <button id="print-report" class="secondary-button" type="button">列印／另存 PDF</button>
+        </section>
+
+        <p id="report-message" class="page-message no-print" role="status" aria-live="polite"></p>
+
+        <article id="print-area" class="report-sheet" aria-labelledby="report-title">
+          <header class="report-heading">
+            <p id="report-school">尚未載入</p>
+            <h2 id="report-title">學生潔牙紀錄表</h2>
+            <p id="report-meta">請選擇月份</p>
+          </header>
+
+          <div class="report-table-wrap">
+            <table id="report-table" class="report-table">
+              <caption class="sr-only">每月學生潔牙紀錄</caption>
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <footer class="report-legend">
+            <span>✓ 已完成潔牙</span>
+            <span>假 學生請假</span>
+            <span>／ 非上課日</span>
+            <span>空白 上課日未完成</span>
+          </footer>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="js/report.js"></script>
+  </body>
+</html>
+

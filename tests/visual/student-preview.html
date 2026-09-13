@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>學生畫面視覺測試</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+  </head>
+  <body class="student-page">
+    <main class="student-shell">
+      <section class="student-app">
+        <header class="student-header">
+          <div>
+            <p class="eyebrow">每天兩次，牙齒更健康</p>
+            <h1><span aria-hidden="true">🦷</span> 今天潔牙了嗎？</h1>
+            <p class="student-instruction">刷完牙，點一下自己的座號</p>
+          </div>
+          <div class="date-badge">9月13日 星期日</div>
+        </header>
+        <section class="student-grid">
+          <article class="student-card" data-student="1" data-state="completed">
+            <button class="student-main-action" type="button">
+              <span class="student-number">1 <small>號</small></span>
+              <span class="student-visual"><span class="tooth">🦷</span><span class="brush">✓</span><span class="sparkles">✦ ✧</span></span>
+              <span class="student-state-title">今天完成！</span>
+              <span class="student-state-subtitle">好棒，繼續保持</span>
+            </button>
+            <button class="leave-button" type="button">今日請假</button>
+          </article>
+          <article class="student-card" data-student="2" data-state="incomplete">
+            <button class="student-main-action" type="button">
+              <span class="student-number">2 <small>號</small></span>
+              <span class="student-visual"><span class="tooth">🦷</span><span class="brush">🪥</span><span class="sparkles">✦ ✧</span></span>
+              <span class="student-state-title">點一下完成潔牙</span>
+              <span class="student-state-subtitle">刷乾淨了就按這裡</span>
+            </button>
+            <button class="leave-button" type="button">今日請假</button>
+          </article>
+        </section>
+        <section class="daily-progress">
+          <div class="progress-copy"><h2>今日完成 <span>1 / 2</span></h2><p>一起把牙齒刷乾淨！</p></div>
+          <div class="progress-track"><span class="progress-fill" style="width: 50%"></span></div>
+        </section>
+        <footer class="health-tip">✨ 刷乾淨，笑容亮晶晶 ✨</footer>
+      </section>
+    </main>
+  </body>
+</html>
+

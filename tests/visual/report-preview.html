@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>月報表視覺測試</title>
+    <link rel="stylesheet" href="../../css/style.css" />
+    <link rel="stylesheet" href="../../css/print.css" />
+  </head>
+  <body class="teacher-page">
+    <main class="teacher-shell">
+      <article class="report-sheet">
+        <header class="report-heading">
+          <p>○○國民小學</p>
+          <h2>學生潔牙紀錄表</h2>
+          <p>115學年度第1學期　9月份　二年甲班</p>
+        </header>
+        <div class="report-table-wrap">
+          <table id="preview-table" class="report-table">
+            <caption class="sr-only">月報表視覺測試</caption>
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <footer class="report-legend"><span>✓ 已完成潔牙</span><span>假 學生請假</span><span>／ 非上課日</span><span>空白 上課日未完成</span></footer>
+      </article>
+    </main>
+    <script>
+      const table = document.querySelector("#preview-table");
+      const days = Array.from({ length: 30 }, (_, index) => index + 1);
+      const weekdays = ["二", "三", "四", "五", "六", "日", "一"];
+      const makeCell = (tag, text, className = "") => {
+        const cell = document.createElement(tag);
+        cell.textContent = text;
+        cell.className = className;
+        return cell;
+      };
+      const appendSummaries = (row) => ["完成", "請假", "應潔牙", "完成率"].forEach((text) => {
+        const cell = makeCell("th", text, "summary-heading");
+        cell.rowSpan = 3;
+        row.append(cell);
+      });
+      const dateRow = document.createElement("tr");
+      dateRow.append(makeCell("th", "日期", "row-heading"));
+      days.forEach((day) => dateRow.append(makeCell("th", day, [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "weekend" : "")));
+      appendSummaries(dateRow);
+      table.tHead.append(dateRow);
+      const weekdayRow = document.createElement("tr");
+      weekdayRow.append(makeCell("th", "星期", "row-heading"));
+      days.forEach((day, index) => weekdayRow.append(makeCell("td", weekdays[index % 7], [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "weekend" : "")));
+      table.tHead.append(weekdayRow);
+      const holidayRow = document.createElement("tr");
+      holidayRow.append(makeCell("th", "假別", "row-heading"));
+      days.forEach((day) => holidayRow.append(makeCell("td", day === 28 ? "教師節" : [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "休" : "", day === 28 || [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "not-school-day" : "")));
+      table.tHead.append(holidayRow);
+      [1, 2].forEach((studentNo) => {
+        const row = document.createElement("tr");
+        row.append(makeCell("th", `${studentNo}號`, "row-heading"));
+        days.forEach((day) => {
+          const off = day === 28 || [5, 6, 12, 13, 19, 20, 26, 27].includes(day);
+          const leave = studentNo === 2 && day === 7;
+          row.append(makeCell("td", off ? "／" : leave ? "假" : day < 14 ? "✓" : "", off ? "not-school-day" : leave ? "leave-mark" : day < 14 ? "completed-mark" : ""));
+        });
+        ["9", studentNo === 2 ? "1" : "0", studentNo === 2 ? "12" : "13", studentNo === 2 ? "75%" : "69.2%"].forEach((value) => row.append(makeCell("td", value, "summary-cell")));
+        table.tBodies[0].append(row);
+      });
+    </script>
+  </body>
+</html>
+

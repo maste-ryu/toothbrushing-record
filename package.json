@@ -1,0 +1,10 @@
+{
+  "name": "toothbrushing-record",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node tests/serve.js",
+    "test": "node tests/core.test.js && node tests/static.test.js"
+  }
+}

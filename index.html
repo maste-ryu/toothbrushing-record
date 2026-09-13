@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f2fbfd" />
+    <title>今天潔牙了嗎？</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="student-page">
+    <main class="student-shell" aria-labelledby="page-title">
+      <section id="device-login" class="auth-card" aria-labelledby="device-login-title" hidden>
+        <div class="auth-icon" aria-hidden="true">🪥</div>
+        <p class="eyebrow">教室裝置設定</p>
+        <h1 id="device-login-title">請老師登入裝置</h1>
+        <p class="muted">首次使用或登入失效時，需要教室裝置帳號。學生不需要登入。</p>
+        <form id="device-login-form" class="auth-form">
+          <label>
+            裝置帳號
+            <output id="device-username-display" class="fixed-account">user</output>
+            <input id="device-username" name="username" type="hidden" value="user" />
+          </label>
+          <label>
+            密碼
+            <input id="device-password" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="primary-button" type="submit">登入教室裝置</button>
+          <p id="device-login-message" class="form-message" role="alert" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="student-app" class="student-app" hidden>
+        <header class="student-header">
+          <div>
+            <p class="eyebrow">每天兩次，牙齒更健康</p>
+            <h1 id="page-title"><span aria-hidden="true">🦷</span> 今天潔牙了嗎？</h1>
+            <p class="student-instruction">刷完牙，點一下自己的座號</p>
+          </div>
+          <div class="date-badge" aria-label="今天日期">
+            <span id="today-date">讀取日期中…</span>
+          </div>
+        </header>
+
+        <div id="connection-message" class="status-banner" role="status" aria-live="polite" hidden></div>
+
+        <section id="student-cards" class="student-grid" aria-label="學生潔牙登記">
+          <article class="student-card" data-student="1" data-state="incomplete">
+            <button class="student-main-action" type="button" data-action="complete" data-student="1" aria-label="1號，點一下完成潔牙">
+              <span class="student-number">1 <small>號</small></span>
+              <span class="student-visual" aria-hidden="true">
+                <span class="tooth">🦷</span><span class="brush">🪥</span><span class="sparkles">✦ ✧</span>
+              </span>
+              <span class="student-state-title">點一下完成潔牙</span>
+              <span class="student-state-subtitle">刷乾淨了就按這裡</span>
+            </button>
+            <button class="leave-button" type="button" data-action="leave" data-student="1">今日請假</button>
+          </article>
+
+          <article class="student-card" data-student="2" data-state="incomplete">
+            <button class="student-main-action" type="button" data-action="complete" data-student="2" aria-label="2號，點一下完成潔牙">
+              <span class="student-number">2 <small>號</small></span>
+              <span class="student-visual" aria-hidden="true">
+                <span class="tooth">🦷</span><span class="brush">🪥</span><span class="sparkles">✦ ✧</span>
+              </span>
+              <span class="student-state-title">點一下完成潔牙</span>
+              <span class="student-state-subtitle">刷乾淨了就按這裡</span>
+            </button>
+            <button class="leave-button" type="button" data-action="leave" data-student="2">今日請假</button>
+          </article>
+        </section>
+
+        <section class="daily-progress" aria-labelledby="progress-title">
+          <div class="progress-copy">
+            <h2 id="progress-title">今日完成 <span id="progress-count">0 / 2</span></h2>
+            <p id="progress-detail">一起把牙齒刷乾淨！</p>
+          </div>
+          <div id="progress-track" class="progress-track" role="progressbar" aria-label="今日潔牙完成進度" aria-valuemin="0" aria-valuemax="2" aria-valuenow="0">
+            <span id="progress-fill" class="progress-fill"></span>
+          </div>
+        </section>
+
+        <footer class="health-tip"><span aria-hidden="true">✨</span> 刷乾淨，笑容亮晶晶 <span aria-hidden="true">✨</span></footer>
+      </section>
+    </main>
+
+    <dialog id="leave-dialog" class="confirm-dialog" aria-labelledby="leave-dialog-title">
+      <form method="dialog">
+        <div class="dialog-icon" aria-hidden="true">☀️</div>
+        <h2 id="leave-dialog-title"><span id="leave-student-number"></span>號今天請假嗎？</h2>
+        <p>確認後，今天將不列入潔牙統計。</p>
+        <div class="dialog-actions">
+          <button value="cancel" class="secondary-button">取消</button>
+          <button id="confirm-leave" value="confirm" class="warning-button">確認請假</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

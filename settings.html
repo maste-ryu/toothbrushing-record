@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>潔牙系統資料設定</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body class="teacher-page">
+    <main class="teacher-shell">
+      <section id="teacher-login" class="auth-card teacher-auth" aria-labelledby="teacher-login-title">
+        <div class="auth-icon" aria-hidden="true">🔐</div>
+        <p class="eyebrow">教師專區</p>
+        <h1 id="teacher-login-title">登入管理設定</h1>
+        <p class="muted">只有教師帳號可以調整每週使用日、報表資料與特殊日期。</p>
+        <form id="teacher-login-form" class="auth-form">
+          <label>
+            教師帳號
+            <input name="email" type="email" autocomplete="username" required />
+          </label>
+          <label>
+            密碼
+            <input name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="primary-button" type="submit">登入</button>
+          <p id="teacher-login-message" class="form-message" role="alert" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="settings-app" hidden>
+        <header class="teacher-toolbar">
+          <div>
+            <p class="eyebrow">教師專區</p>
+            <h1>資料設定</h1>
+          </div>
+          <nav class="toolbar-actions" aria-label="教師功能">
+            <a class="secondary-button button-link" href="report.html">返回月報</a>
+            <button id="teacher-logout" class="ghost-button" type="button">登出</button>
+          </nav>
+        </header>
+
+        <div class="settings-grid">
+          <section class="settings-panel" aria-labelledby="report-settings-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">月報表頭</p>
+                <h2 id="report-settings-title">報表行政資料</h2>
+              </div>
+              <button id="new-report-setting" class="ghost-button compact" type="button">新增一學期</button>
+            </div>
+
+            <form id="report-settings-form" class="settings-form">
+              <input id="report-setting-id" type="hidden" />
+              <label class="wide-field">
+                學校名稱
+                <input id="school-name" maxlength="80" required />
+              </label>
+              <label>
+                班級
+                <input id="class-name" maxlength="40" required />
+              </label>
+              <label>
+                表單標題
+                <input id="form-title" maxlength="80" value="學生潔牙紀錄表" required />
+              </label>
+              <label>
+                學年度
+                <input id="academic-year" type="number" min="1" max="999" inputmode="numeric" required />
+              </label>
+              <label>
+                學期
+                <select id="semester" required>
+                  <option value="1">第 1 學期</option>
+                  <option value="2">第 2 學期</option>
+                </select>
+              </label>
+              <label>
+                開始日期
+                <input id="effective-start" type="date" required />
+              </label>
+              <label>
+                結束日期
+                <input id="effective-end" type="date" required />
+              </label>
+              <div class="form-actions wide-field">
+                <button class="primary-button" type="submit">儲存行政資料</button>
+                <button id="cancel-report-setting" class="secondary-button" type="button">取消編輯</button>
+              </div>
+              <p id="report-settings-message" class="form-message wide-field" role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <caption class="sr-only">已建立的報表行政資料</caption>
+                <thead>
+                  <tr><th>學年度／學期</th><th>學校／班級</th><th>有效期間</th><th>操作</th></tr>
+                </thead>
+                <tbody id="report-settings-list"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="settings-panel" aria-labelledby="usage-days-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">系統使用日</p>
+                <h2 id="usage-days-title">每週使用日期</h2>
+              </div>
+            </div>
+
+            <p class="muted">選擇一般情況下哪些星期可以登記。下方特殊日期設定仍可覆寫個別日期。</p>
+            <form id="usage-days-form" class="settings-form">
+              <label class="wide-field">
+                每週使用模式
+                <select id="usage-day-mode" required>
+                  <option value="weekdays">週一至週五</option>
+                  <option value="everyday">星期一至星期日（七日皆可）</option>
+                </select>
+              </label>
+              <div class="form-actions wide-field">
+                <button class="primary-button" type="submit">儲存每週使用日</button>
+              </div>
+              <p id="usage-days-message" class="form-message wide-field" role="status" aria-live="polite"></p>
+            </form>
+          </section>
+
+          <section class="settings-panel" aria-labelledby="calendar-settings-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">上課日覆寫</p>
+                <h2 id="calendar-settings-title">特殊日期設定</h2>
+              </div>
+              <label class="inline-field">
+                查看月份
+                <input id="calendar-month" type="month" required />
+              </label>
+            </div>
+
+            <p class="muted">特殊日期優先於每週使用模式，可設定放假、停課或個別補行使用日。</p>
+
+            <form id="calendar-form" class="settings-form">
+              <input id="calendar-setting-id" type="hidden" />
+              <label>
+                日期
+                <input id="calendar-date" type="date" required />
+              </label>
+              <label>
+                日期類型
+                <select id="calendar-type" required>
+                  <option value="false">非上課日</option>
+                  <option value="true">上課／可使用日</option>
+                </select>
+              </label>
+              <label class="wide-field">
+                假別／說明
+                <input id="calendar-label" maxlength="60" placeholder="例如：教師節補假、補行上課" required />
+              </label>
+              <div class="form-actions wide-field">
+                <button class="primary-button" type="submit">儲存特殊日期</button>
+                <button id="cancel-calendar-setting" class="secondary-button" type="button">清除表單</button>
+              </div>
+              <p id="calendar-message" class="form-message wide-field" role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <caption class="sr-only">當月特殊日期</caption>
+                <thead>
+                  <tr><th>日期</th><th>星期</th><th>設定</th><th>說明</th><th>操作</th></tr>
+                </thead>
+                <tbody id="calendar-list"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="js/settings.js"></script>
+  </body>
+</html>
