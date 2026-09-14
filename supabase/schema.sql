@@ -75,6 +75,7 @@ create table if not exists public.student_profiles (
   id uuid primary key default gen_random_uuid(),
   report_setting_id uuid not null references public.report_settings(id) on delete restrict,
   student_no smallint not null constraint student_profiles_student_check check (student_no in (1, 2)),
+  display_no smallint not null constraint student_profiles_display_no_check check (display_no between 1 and 99),
   display_name text not null
     constraint student_profiles_display_name_check check (char_length(btrim(display_name)) between 1 and 30),
   photo_path text
@@ -87,6 +88,31 @@ create table if not exists public.student_profiles (
   updated_by uuid references auth.users(id) on delete set null,
   constraint student_profiles_setting_student_key unique (report_setting_id, student_no)
 );
+
+-- 舊版資料庫升級：student_no 保留為兩個固定的內部位置，display_no 才是畫面上的可改座號。
+alter table public.student_profiles
+  add column if not exists display_no smallint;
+
+update public.student_profiles
+set display_no = student_no
+where display_no is null;
+
+alter table public.student_profiles
+  alter column display_no set not null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'student_profiles_display_no_check'
+      and conrelid = 'public.student_profiles'::regclass
+  ) then
+    alter table public.student_profiles
+      add constraint student_profiles_display_no_check check (display_no between 1 and 99);
+  end if;
+end;
+$$;
 
 create index if not exists student_profiles_report_setting_idx
   on public.student_profiles (report_setting_id);
@@ -109,7 +135,7 @@ comment on table public.brushing_records is '學生每日第一筆有效潔牙�
 comment on table public.school_calendar is '覆寫每週使用模式的特殊上課或非上課日期。';
 comment on table public.app_settings is '全系統單例設定；決定一般每週使用日。';
 comment on table public.report_settings is '依學期保存的月報行政資料。';
-comment on table public.student_profiles is '按學期保存兩位學生的顯示名稱與私人圖片路徑。';
+comment on table public.student_profiles is '按學期保存兩位學生的顯示座號、名稱與私人圖片路徑；student_no 是固定內部位置。';
 
 create or replace function private.taipei_today()
 returns date

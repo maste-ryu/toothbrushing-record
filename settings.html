@@ -104,7 +104,7 @@
             <div class="section-heading">
               <div>
                 <p class="eyebrow">座號資料</p>
-                <h2 id="student-profiles-title">學生姓名與圖片</h2>
+                <h2 id="student-profiles-title">學生座號、姓名與圖片</h2>
               </div>
               <label class="inline-field">
                 適用學期
@@ -112,16 +112,20 @@
               </label>
             </div>
 
-            <p class="muted">姓名與圖片按學期保存。圖片為選填，支援 JPEG、PNG、WebP，檔案上限 2 MB。</p>
-            <p id="student-profiles-empty" class="page-message">請先建立報表行政資料，再設定學生姓名與圖片。</p>
+            <p class="muted">座號、姓名與圖片按學期保存。座號限 1～99 且兩位不可重複；圖片為選填，支援 JPEG、PNG、WebP，檔案上限 2 MB。</p>
+            <p id="student-profiles-empty" class="page-message">請先建立報表行政資料，再設定學生座號、姓名與圖片。</p>
 
             <form id="student-profiles-form" class="student-profiles-form" hidden>
               <fieldset class="student-profile-editor" data-student-profile="1">
-                <legend>1號學生</legend>
+                <legend id="student-profile-label-1">第 1 位學生</legend>
                 <div class="profile-photo-preview" aria-label="1號學生圖片預覽">
                   <img id="student-photo-preview-1" alt="1號學生圖片預覽" hidden />
                   <span id="student-photo-fallback-1" aria-hidden="true">1</span>
                 </div>
+                <label>
+                  座號
+                  <input id="student-number-1" type="number" min="1" max="99" inputmode="numeric" required />
+                </label>
                 <label>
                   顯示姓名
                   <input id="student-name-1" maxlength="30" autocomplete="off" required />
@@ -135,11 +139,15 @@
               </fieldset>
 
               <fieldset class="student-profile-editor" data-student-profile="2">
-                <legend>2號學生</legend>
+                <legend id="student-profile-label-2">第 2 位學生</legend>
                 <div class="profile-photo-preview" aria-label="2號學生圖片預覽">
                   <img id="student-photo-preview-2" alt="2號學生圖片預覽" hidden />
                   <span id="student-photo-fallback-2" aria-hidden="true">2</span>
                 </div>
+                <label>
+                  座號
+                  <input id="student-number-2" type="number" min="1" max="99" inputmode="numeric" required />
+                </label>
                 <label>
                   顯示姓名
                   <input id="student-name-2" maxlength="30" autocomplete="off" required />

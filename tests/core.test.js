@@ -5,11 +5,13 @@ import {
   formatStudentReportLabel,
   formatRate,
   getStudentDisplayName,
+  getStudentDisplayNumber,
   getMonthDates,
   getTaipeiIsoDate,
   getWeekdayLabel,
   isDefaultSchoolDay,
   resolveSchoolDay,
+  parseStudentNumber,
   validateStudentPhoto,
 } from "../js/common.js";
 
@@ -24,6 +26,12 @@ assert.equal(getMonthDates("2026-09").length, 30);
 assert.equal(getMonthDates("2028-02").length, 29);
 assert.equal(getStudentDisplayName(1, "小星"), "小星");
 assert.equal(getStudentDisplayName(2, "  "), "2號同學");
+assert.equal(parseStudentNumber("17"), 17);
+assert.equal(parseStudentNumber("0"), null);
+assert.equal(parseStudentNumber("100"), null);
+assert.equal(parseStudentNumber("3.5"), null);
+assert.equal(getStudentDisplayNumber(1, 17), 17);
+assert.equal(getStudentDisplayNumber(2, null), 2);
 assert.equal(formatStudentReportLabel(1, " 小星 "), "1號 小星");
 assert.equal(formatStudentReportLabel(2, ""), "2號");
 assert.equal(validateStudentPhoto({ type: "image/png", size: 2 * 1024 * 1024 }), "");

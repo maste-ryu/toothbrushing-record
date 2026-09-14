@@ -60,6 +60,8 @@ assert.match(settingsHtml, /id="usage-day-mode"/);
 assert.match(settingsHtml, /id="calendar-form"/);
 assert.match(settingsHtml, /id="student-profiles-form"/);
 assert.match(settingsHtml, /id="student-profile-term"/);
+assert.match(settingsHtml, /id="student-number-1"[^>]*min="1"[^>]*max="99"/);
+assert.match(settingsHtml, /id="student-number-2"[^>]*min="1"[^>]*max="99"/);
 assert.match(settingsHtml, /accept="image\/jpeg,image\/png,image\/webp"/);
 const htmlIds = [...settingsHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(htmlIds).size, htmlIds.length, "settings.html contains duplicate ids");
@@ -82,6 +84,7 @@ assert.match(schema, /student_profiles_kiosk_select_current/);
 assert.match(schema, /student_photos_kiosk_select_current/);
 assert.match(schema, /student_photos_teacher_insert/);
 assert.match(schema, /student_profiles_setting_student_key unique \(report_setting_id, student_no\)/);
+assert.match(schema, /student_profiles_display_no_check check \(display_no between 1 and 99\)/);
 
 assert.doesNotMatch(allClientSource, /service_role\s*[:=]\s*["']/i);
 assert.doesNotMatch(allClientSource, /sb_secret_[a-z0-9_-]{10,}/i);

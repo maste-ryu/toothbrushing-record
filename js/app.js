@@ -4,6 +4,7 @@ import {
   calculateDailyProgress,
   formatTaipeiDisplayDate,
   getStudentDisplayName,
+  getStudentDisplayNumber,
   getTaipeiIsoDate,
   resolveSchoolDay,
   STUDENT_NUMBERS,
@@ -30,7 +31,7 @@ const toast = document.querySelector("#toast");
 
 const records = new Map(STUDENT_NUMBERS.map((studentNo) => [studentNo, null]));
 const studentProfiles = new Map(
-  STUDENT_NUMBERS.map((studentNo) => [studentNo, { student_no: studentNo, display_name: "", photo_path: null, photoUrl: null }]),
+  STUDENT_NUMBERS.map((studentNo) => [studentNo, { student_no: studentNo, display_no: studentNo, display_name: "", photo_path: null, photoUrl: null }]),
 );
 const busyStudents = new Set();
 let activeDate = getTaipeiIsoDate();
@@ -82,7 +83,7 @@ function revokeProfilePhotoUrls() {
 async function setStudentProfiles(rows) {
   const previousProfiles = new Map(studentProfiles);
   const nextProfiles = new Map(
-    STUDENT_NUMBERS.map((studentNo) => [studentNo, { student_no: studentNo, display_name: "", photo_path: null, photoUrl: null }]),
+    STUDENT_NUMBERS.map((studentNo) => [studentNo, { student_no: studentNo, display_no: studentNo, display_name: "", photo_path: null, photoUrl: null }]),
   );
 
   for (const row of rows || []) {
@@ -126,13 +127,17 @@ function renderCard(studentNo, animate = false) {
   const subtitle = card.querySelector(".student-state-subtitle");
   const record = records.get(studentNo);
   const profile = studentProfiles.get(studentNo);
-  const displayName = getStudentDisplayName(studentNo, profile?.display_name);
+  const displayNo = getStudentDisplayNumber(studentNo, profile?.display_no);
+  const displayName = getStudentDisplayName(displayNo, profile?.display_name);
   const nameElement = card.querySelector(`[data-profile-name="${studentNo}"]`);
   const photoElement = card.querySelector(`[data-profile-photo="${studentNo}"]`);
   const photoFallback = card.querySelector(`[data-profile-fallback="${studentNo}"]`);
+  const numberElement = card.querySelector(".student-number");
   const isBusy = busyStudents.has(studentNo);
 
   nameElement.textContent = displayName;
+  numberElement.firstChild.textContent = `${displayNo} `;
+  photoFallback.textContent = String(displayNo);
   if (profile?.photoUrl) {
     photoElement.src = profile.photoUrl;
     photoElement.hidden = false;
@@ -153,13 +158,13 @@ function renderCard(studentNo, animate = false) {
     visualBrush.textContent = "";
     title.textContent = "今日非上課日";
     subtitle.textContent = todaySchoolInfo.label || "今天好好休息";
-    mainButton.setAttribute("aria-label", `${displayName}，${studentNo}號，今日非上課日`);
+    mainButton.setAttribute("aria-label", `${displayName}，${displayNo}號，今日非上課日`);
   } else if (record?.status === "completed") {
     visualTooth.textContent = "🦷";
     visualBrush.textContent = "✓";
     title.textContent = "今天完成！";
     subtitle.textContent = "好棒，繼續保持";
-    mainButton.setAttribute("aria-label", `${displayName}，${studentNo}號，今天已完成潔牙`);
+    mainButton.setAttribute("aria-label", `${displayName}，${displayNo}號，今天已完成潔牙`);
     if (animate) {
       requestAnimationFrame(() => card.classList.add("just-completed"));
     }
@@ -168,13 +173,13 @@ function renderCard(studentNo, animate = false) {
     visualBrush.textContent = "";
     title.textContent = "今日請假";
     subtitle.textContent = "不列入潔牙統計";
-    mainButton.setAttribute("aria-label", `${displayName}，${studentNo}號，今日請假`);
+    mainButton.setAttribute("aria-label", `${displayName}，${displayNo}號，今日請假`);
   } else {
     visualTooth.textContent = "🦷";
     visualBrush.textContent = "🪥";
     title.textContent = "點一下完成潔牙";
     subtitle.textContent = "刷乾淨了就按這裡";
-    mainButton.setAttribute("aria-label", `${displayName}，${studentNo}號，點一下完成潔牙`);
+    mainButton.setAttribute("aria-label", `${displayName}，${displayNo}號，點一下完成潔牙`);
   }
 }
 
@@ -240,7 +245,7 @@ async function fetchTodayState() {
     kioskClient.from("app_settings").select("usage_day_mode").eq("id", 1).single(),
     kioskClient.from("school_calendar").select("date, is_school_day, label").eq("date", today).maybeSingle(),
     kioskClient.from("brushing_records").select("student_no, status, recorded_at").eq("record_date", today),
-    kioskClient.from("student_profiles").select("student_no, display_name, photo_path"),
+    kioskClient.from("student_profiles").select("student_no, display_no, display_name, photo_path"),
   ]);
 
   if (appSettingsError) throw appSettingsError;
@@ -318,7 +323,8 @@ async function createRecord(studentNo, status) {
     records.set(studentNo, data);
     busyStudents.delete(studentNo);
     renderAll(status === "completed" ? studentNo : null);
-    showToast(status === "completed" ? `${studentNo}號完成潔牙！` : `${studentNo}號已登記請假`);
+    const displayNo = getStudentDisplayNumber(studentNo, studentProfiles.get(studentNo)?.display_no);
+    showToast(status === "completed" ? `${displayNo}號完成潔牙！` : `${displayNo}號已登記請假`);
   } catch (error) {
     busyStudents.delete(studentNo);
     console.error("寫入潔牙紀錄失敗", error);
@@ -333,7 +339,8 @@ async function createRecord(studentNo, status) {
       const current = records.get(studentNo);
       if (refreshed && current?.status === status) {
         renderAll(status === "completed" ? studentNo : null);
-        showToast(status === "completed" ? `${studentNo}號完成潔牙！` : `${studentNo}號已登記請假`);
+        const displayNo = getStudentDisplayNumber(studentNo, studentProfiles.get(studentNo)?.display_no);
+        showToast(status === "completed" ? `${displayNo}號完成潔牙！` : `${displayNo}號已登記請假`);
       } else if (refreshed && !todaySchoolInfo.isSchoolDay) {
         renderAll();
         showToast(todaySchoolInfo.label || "今天是非上課日，不需要登記。");
@@ -363,8 +370,10 @@ document.querySelector("#student-cards").addEventListener("click", (event) => {
   }
 
   pendingLeaveStudent = studentNo;
-  leaveStudentName.textContent = getStudentDisplayName(studentNo, studentProfiles.get(studentNo)?.display_name);
-  leaveStudentNumber.textContent = String(studentNo);
+  const profile = studentProfiles.get(studentNo);
+  const displayNo = getStudentDisplayNumber(studentNo, profile?.display_no);
+  leaveStudentName.textContent = getStudentDisplayName(displayNo, profile?.display_name);
+  leaveStudentNumber.textContent = String(displayNo);
   leaveDialog.showModal();
 });
 

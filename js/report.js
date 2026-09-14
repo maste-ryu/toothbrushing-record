@@ -6,6 +6,7 @@ import {
   getTaipeiIsoDate,
   getTaipeiYearMonth,
   getWeekdayLabel,
+  getStudentDisplayNumber,
   isWeekend,
   resolveSchoolDay,
   STUDENT_NUMBERS,
@@ -112,10 +113,12 @@ function renderReport({ yearMonth, dates, calendarRows, recordRows, profileRows,
   thead.append(holidayRow);
 
   for (const studentNo of STUDENT_NUMBERS) {
+    const profile = profilesByStudent.get(studentNo);
+    const displayNo = getStudentDisplayNumber(studentNo, profile?.display_no);
     const row = document.createElement("tr");
     const heading = createCell(
       "th",
-      formatStudentReportLabel(studentNo, profilesByStudent.get(studentNo)?.display_name),
+      formatStudentReportLabel(displayNo, profile?.display_name),
       ["row-heading"],
     );
     heading.scope = "row";
@@ -192,7 +195,7 @@ async function loadReport() {
     if (settingsResult.data) {
       const profilesResult = await teacherClient
         .from("student_profiles")
-        .select("student_no, display_name")
+        .select("student_no, display_no, display_name")
         .eq("report_setting_id", settingsResult.data.id)
         .order("student_no");
       if (profilesResult.error) throw profilesResult.error;

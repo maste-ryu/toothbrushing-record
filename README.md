@@ -1,19 +1,19 @@
 # 潔牙記錄系統
 
-供台灣國小教室固定觸控螢幕使用的兩人潔牙記錄系統。學生完成潔牙後，只需點選自己的姓名／座號卡片；教師可登入查看月報，並設定學生姓名與圖片、每週使用日期、報表行政資料及特殊日期。
+供台灣國小教室固定觸控螢幕使用的兩人潔牙記錄系統。學生完成潔牙後，只需點選自己的姓名／座號卡片；教師可登入查看月報，並按學期設定學生座號、姓名與圖片、每週使用日期、報表行政資料及特殊日期。
 
 本專案是可部署到 GitHub Pages 的純靜態網站，資料、登入與權限由 Supabase 提供。完整需求請參閱 [SPEC.md](SPEC.md)。
 
 ## 功能
 
-- 1號、2號大型觸控卡片，一次點擊完成潔牙。
+- 兩張大型觸控卡片，一次點擊完成潔牙。
 - 獨立請假操作及二次確認。
 - 由 Supabase 保存每日第一筆有效狀態，重新整理後不消失。
 - 以 `Asia/Taipei` 判定今天及跨日。
 - 教師登入保護的月報與資料設定頁。
 - 教師可選擇週一至週五或一週七日皆可使用，並設定特殊假日、停課日及個別可使用日。
-- 教師可按學期設定兩位學生的顯示姓名，並選擇上傳 JPEG、PNG 或 WebP 圖片（上限 2 MB）。
-- 學生頁顯示姓名與選填圖片；月報顯示該月份適用學期的姓名。
+- 教師可按學期設定兩位學生的座號（1～99）與顯示姓名，並選擇上傳 JPEG、PNG 或 WebP 圖片（上限 2 MB）。
+- 學生頁與月報套用該月份適用學期的座號、姓名及選填圖片資料。
 - A4 橫式、黑白可辨識的月報列印樣式。
 - Supabase Auth、Row Level Security 與 kiosk／teacher 分權。
 
@@ -58,6 +58,8 @@
 5. 到 Storage 確認出現 private bucket `student-photos`，且檔案限制為 2 MB、格式為 JPEG／PNG／WebP。
 
 Schema 會建立 constraints、indexes、trigger、輔助函式及完整 RLS。不要關閉 RLS。
+
+從 V1.1 升級時，也要重新執行完整的 `supabase/schema.sql`。腳本會替既有 `student_profiles` 加入 `display_no`，並先沿用原本的 1、2 號；既有潔牙紀錄不會被刪除或改號。
 
 ## 2. 設定 Supabase Auth
 
@@ -136,7 +138,7 @@ export const KIOSK_AUTH_EMAIL = "user@toothbrushing-record.invalid";
 
 `kiosk` 寫入時，資料庫會再次檢查：
 
-- 座號只能是 1 或 2。
+- 寫入紀錄使用的內部學生位置只能是 1 或 2；畫面座號由當學期設定決定。
 - 狀態只能是 `completed` 或 `leave`。
 - 日期必須是資料庫以 `Asia/Taipei` 計算的今天。
 - 今天必須符合每週使用模式，或被特殊日期指定為上課／可使用日。
@@ -151,7 +153,7 @@ export const KIOSK_AUTH_EMAIL = "user@toothbrushing-record.invalid";
 3. 開啟 `settings.html`，使用 teacher 帳號登入。
 4. 選擇每週使用日期為「週一至週五」或「星期一至星期日」。
 5. 新增目前學期的報表行政資料。
-6. 在「學生姓名與圖片」選擇該學期，輸入兩位學生的顯示姓名；圖片為選填。
+6. 在「學生座號、姓名與圖片」選擇該學期，輸入兩位學生的座號及顯示姓名；圖片為選填。
 7. 再加入需要覆寫每週模式的特殊日期。
 8. 開啟 `report.html` 查看及列印月報。
 
@@ -159,9 +161,9 @@ export const KIOSK_AUTH_EMAIL = "user@toothbrushing-record.invalid";
 
 每學年度、每學期建立一筆設定。有效日期不可重疊；月報以所選月份第一天尋找適用設定。
 
-### 學生姓名與圖片
+### 學生座號、姓名與圖片
 
-學生顯示資料綁定報表學期，因此下一學期修改姓名不會改變舊月份報表。姓名最長 30 字；圖片只接受 JPEG、PNG、WebP 且不得超過 2 MB。移除或替換圖片後，設定頁會同步更新私人 Storage 物件。
+學生顯示資料綁定報表學期，因此下一學期修改座號或姓名不會改變舊月份報表。座號必須是 1～99 的整數，兩位學生不可重複；姓名最長 30 字。圖片只接受 JPEG、PNG、WebP 且不得超過 2 MB。移除或替換圖片後，設定頁會同步更新私人 Storage 物件。
 
 若某學期尚未設定學生資料，學生頁顯示「1號同學／2號同學」與座號圖示，月報只顯示座號。月報不顯示學生圖片。
 
@@ -278,8 +280,8 @@ npm test
 - Public/publishable key 不是管理密鑰，可以由瀏覽器載入。
 - 安全性不能依賴隱藏前端程式碼或 key；必須依賴 Auth、constraints 及 RLS。
 - 不要在 GitHub issue、截圖、README 或 commit 中放入帳號密碼。
-- 學生姓名與圖片不會提交到 GitHub；圖片保存在 private Storage，存取仍由 Auth 與 RLS 控制。
-- 若要更正既有潔牙紀錄，V1.1 只能由具備 Supabase 管理權限的人員在 Dashboard 處理。
+- 學生座號、姓名與圖片不會提交到 GitHub；圖片保存在 private Storage，存取仍由 Auth 與 RLS 控制。
+- 若要更正既有潔牙紀錄，V1.2 只能由具備 Supabase 管理權限的人員在 Dashboard 處理。
 
 官方參考資料：
 

@@ -1,4 +1,6 @@
 export const STUDENT_NUMBERS = Object.freeze([1, 2]);
+export const STUDENT_NUMBER_MIN = 1;
+export const STUDENT_NUMBER_MAX = 99;
 export const TAIPEI_TIME_ZONE = "Asia/Taipei";
 export const STUDENT_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 export const STUDENT_PHOTO_TYPES = Object.freeze({
@@ -41,6 +43,17 @@ export function formatTaipeiDisplayDate(now = new Date()) {
 export function getStudentDisplayName(studentNo, displayName) {
   const normalizedName = typeof displayName === "string" ? displayName.trim() : "";
   return normalizedName || `${studentNo}號同學`;
+}
+
+export function parseStudentNumber(value) {
+  const studentNo = Number(value);
+  return Number.isInteger(studentNo) && studentNo >= STUDENT_NUMBER_MIN && studentNo <= STUDENT_NUMBER_MAX
+    ? studentNo
+    : null;
+}
+
+export function getStudentDisplayNumber(studentSlot, displayNo) {
+  return parseStudentNumber(displayNo) ?? studentSlot;
 }
 
 export function formatStudentReportLabel(studentNo, displayName) {

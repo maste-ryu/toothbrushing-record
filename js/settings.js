@@ -4,6 +4,7 @@ import {
   getTaipeiIsoDate,
   getTaipeiYearMonth,
   getWeekdayLabel,
+  parseStudentNumber,
   STUDENT_NUMBERS,
   STUDENT_PHOTO_TYPES,
   validateStudentPhoto,
@@ -103,6 +104,20 @@ function setStudentPhotoStatus(studentNo, message) {
   document.querySelector(`#student-photo-status-${studentNo}`).textContent = message;
 }
 
+function getStudentNumber(studentSlot) {
+  return parseStudentNumber(document.querySelector(`#student-number-${studentSlot}`).value) ?? studentSlot;
+}
+
+function updateStudentEditorLabel(studentSlot) {
+  const displayNo = getStudentNumber(studentSlot);
+  document.querySelector(`#student-profile-label-${studentSlot}`).textContent = `${displayNo}號學生`;
+  document.querySelector(`#student-photo-fallback-${studentSlot}`).textContent = String(displayNo);
+  const preview = document.querySelector(`[data-student-profile="${studentSlot}"] .profile-photo-preview`);
+  const image = document.querySelector(`#student-photo-preview-${studentSlot}`);
+  preview.setAttribute("aria-label", `${displayNo}號學生圖片預覽`);
+  image.alt = `${displayNo}號學生圖片預覽`;
+}
+
 function getSelectedReportSetting() {
   return reportSettingsRows.find((row) => row.id === studentProfileTerm.value) || null;
 }
@@ -138,10 +153,12 @@ function resetStudentProfileEditor() {
   revokeAllStudentPhotoPreviews();
 
   for (const studentNo of STUDENT_NUMBERS) {
+    document.querySelector(`#student-number-${studentNo}`).value = String(studentNo);
     document.querySelector(`#student-name-${studentNo}`).value = "";
     document.querySelector(`#student-photo-${studentNo}`).value = "";
     showStudentPhotoPreview(studentNo);
     setStudentPhotoStatus(studentNo, "尚未上傳圖片");
+    updateStudentEditorLabel(studentNo);
   }
   setFormMessage(studentProfilesMessage);
 }
@@ -157,7 +174,7 @@ async function loadStudentProfiles() {
 
   const { data, error } = await teacherClient
     .from("student_profiles")
-    .select("id, report_setting_id, student_no, display_name, photo_path")
+    .select("id, report_setting_id, student_no, display_no, display_name, photo_path")
     .eq("report_setting_id", setting.id)
     .order("student_no");
   if (error) throw error;
@@ -166,7 +183,9 @@ async function loadStudentProfiles() {
   studentProfileRows = new Map((data || []).map((row) => [row.student_no, row]));
   for (const studentNo of STUDENT_NUMBERS) {
     const row = studentProfileRows.get(studentNo);
+    document.querySelector(`#student-number-${studentNo}`).value = String(row?.display_no ?? studentNo);
     document.querySelector(`#student-name-${studentNo}`).value = row?.display_name || "";
+    updateStudentEditorLabel(studentNo);
     setStudentPhotoStatus(studentNo, row?.photo_path ? "正在讀取目前圖片…" : "尚未上傳圖片");
   }
 
@@ -179,7 +198,7 @@ async function loadStudentProfiles() {
         .download(row.photo_path);
       if (sequence !== studentProfileLoadSequence) return;
       if (downloadError) {
-        console.warn(`讀取 ${studentNo} 號學生圖片失敗`, downloadError);
+        console.warn(`讀取 ${getStudentNumber(studentNo)} 號學生圖片失敗`, downloadError);
         setStudentPhotoStatus(studentNo, "圖片暫時無法預覽，可重新選擇圖片覆蓋。 ");
         return;
       }
@@ -197,7 +216,7 @@ function handleStudentPhotoSelection(studentNo, input) {
   const validationMessage = validateStudentPhoto(file);
   if (validationMessage) {
     input.value = "";
-    setFormMessage(studentProfilesMessage, `${studentNo}號：${validationMessage}`, true);
+    setFormMessage(studentProfilesMessage, `${getStudentNumber(studentNo)}號：${validationMessage}`, true);
     return;
   }
 
@@ -238,6 +257,7 @@ async function saveStudentProfile(setting, studentNo) {
   const payload = {
     report_setting_id: setting.id,
     student_no: studentNo,
+    display_no: getStudentNumber(studentNo),
     display_name: document.querySelector(`#student-name-${studentNo}`).value.trim(),
     photo_path: nextPath,
   };
@@ -378,6 +398,9 @@ document.querySelector("#cancel-report-setting").addEventListener("click", reset
 studentProfileTerm.addEventListener("change", () => loadStudentProfiles().catch(handleInitialLoadError));
 
 for (const studentNo of STUDENT_NUMBERS) {
+  document.querySelector(`#student-number-${studentNo}`).addEventListener("input", () => {
+    updateStudentEditorLabel(studentNo);
+  });
   document.querySelector(`#student-photo-${studentNo}`).addEventListener("change", (event) => {
     handleStudentPhotoSelection(studentNo, event.currentTarget);
   });
@@ -396,18 +419,34 @@ studentProfilesForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  const displayNumbers = STUDENT_NUMBERS.map((studentNo) =>
+    parseStudentNumber(document.querySelector(`#student-number-${studentNo}`).value),
+  );
+  const invalidStudent = displayNumbers.findIndex((studentNo) => studentNo === null);
+  if (invalidStudent !== -1) {
+    const studentSlot = STUDENT_NUMBERS[invalidStudent];
+    setFormMessage(studentProfilesMessage, "座號請輸入 1～99 的整數。", true);
+    document.querySelector(`#student-number-${studentSlot}`).focus();
+    return;
+  }
+  if (new Set(displayNumbers).size !== displayNumbers.length) {
+    setFormMessage(studentProfilesMessage, "兩位學生的座號不可重複。", true);
+    document.querySelector("#student-number-2").focus();
+    return;
+  }
+
   const missingName = STUDENT_NUMBERS.find(
     (studentNo) => !document.querySelector(`#student-name-${studentNo}`).value.trim(),
   );
   if (missingName) {
-    setFormMessage(studentProfilesMessage, `請輸入 ${missingName} 號學生的顯示姓名。`, true);
+    setFormMessage(studentProfilesMessage, `請輸入 ${getStudentNumber(missingName)} 號學生的顯示姓名。`, true);
     document.querySelector(`#student-name-${missingName}`).focus();
     return;
   }
 
   const submitButton = studentProfilesForm.querySelector("button[type='submit']");
   submitButton.disabled = true;
-  setFormMessage(studentProfilesMessage, "正在儲存姓名與圖片…");
+  setFormMessage(studentProfilesMessage, "正在儲存座號、姓名與圖片…");
 
   try {
     const results = await Promise.allSettled(
@@ -422,11 +461,11 @@ studentProfilesForm.addEventListener("submit", async (event) => {
     if (failedStudents.length) {
       setFormMessage(
         studentProfilesMessage,
-        `${failedStudents.join("、")}號資料儲存失敗；其他已成功的資料已保留，請檢查圖片與網路後再試一次。`,
+        `${failedStudents.map(getStudentNumber).join("、")}號資料儲存失敗；其他已成功的資料已保留，請檢查圖片與網路後再試一次。`,
         true,
       );
     } else {
-      setFormMessage(studentProfilesMessage, "兩位學生的姓名與圖片設定已儲存。 ");
+      setFormMessage(studentProfilesMessage, "兩位學生的座號、姓名與圖片設定已儲存。 ");
     }
   } catch (error) {
     console.error("重新讀取學生資料失敗", error);
