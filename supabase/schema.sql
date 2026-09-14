@@ -1,4 +1,4 @@
--- 潔牙記錄系統 V1.1
+-- 潔牙記錄系統 V1.2
 -- 請以 Supabase Dashboard > SQL Editor 執行本檔。
 -- 本檔不建立 Auth 帳號，也不包含任何密碼或 service_role key。
 
