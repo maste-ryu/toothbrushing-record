@@ -1,6 +1,8 @@
 import { requireAppRole, signInForRole, signOut } from "./auth.js";
 import {
   getMonthBounds,
+  getStudentDisplayName,
+  getStudentDisplayNumber,
   getTaipeiIsoDate,
   getTaipeiYearMonth,
   getWeekdayLabel,
@@ -29,12 +31,22 @@ const studentProfileTerm = document.querySelector("#student-profile-term");
 const studentProfilesEmpty = document.querySelector("#student-profiles-empty");
 const studentProfilesForm = document.querySelector("#student-profiles-form");
 const studentProfilesMessage = document.querySelector("#student-profiles-message");
+const todayRecordsList = document.querySelector("#today-records-list");
+const todayRecordsMessage = document.querySelector("#today-records-message");
+const correctRecordDialog = document.querySelector("#correct-record-dialog");
+const correctRecordStudent = document.querySelector("#correct-record-student");
+const correctRecordStatus = document.querySelector("#correct-record-status");
+const correctRecordDate = document.querySelector("#correct-record-date");
+const confirmCorrectRecordButton = document.querySelector("#confirm-correct-record");
 
 let reportSettingsRows = [];
 let calendarRows = [];
 let usageDayMode = "weekdays";
 let studentProfileRows = new Map();
 let studentProfileLoadSequence = 0;
+let todayRecords = new Map();
+let todayRecordProfiles = new Map();
+let pendingRecordCorrection = null;
 const selectedStudentPhotos = new Map();
 const removedStudentPhotos = new Set();
 const studentPhotoPreviewUrls = new Map();
@@ -71,6 +83,123 @@ function makeEmptyRow(columnCount, text) {
   row.append(cell);
   return row;
 }
+
+function getTodayRecordProfile(studentNo) {
+  return todayRecordProfiles.get(studentNo) || { student_no: studentNo, display_no: studentNo, display_name: "" };
+}
+
+function renderTodayRecords() {
+  todayRecordsList.replaceChildren();
+  for (const studentNo of STUDENT_NUMBERS) {
+    const profile = getTodayRecordProfile(studentNo);
+    const displayNo = getStudentDisplayNumber(studentNo, profile.display_no);
+    const displayName = getStudentDisplayName(displayNo, profile.display_name);
+    const record = todayRecords.get(studentNo) || null;
+    const row = document.createElement("tr");
+    const number = document.createElement("td");
+    number.textContent = String(displayNo);
+    const name = document.createElement("td");
+    name.textContent = displayName;
+    const status = document.createElement("td");
+    const statusLabel = record?.status === "completed" ? "完成潔牙" : record?.status === "leave" ? "請假" : "未完成";
+    status.textContent = statusLabel;
+    status.className = `record-status ${record?.status || "incomplete"}`;
+    const actions = document.createElement("td");
+    actions.className = "table-actions";
+    if (record) {
+      const button = makeButton("清除紀錄", "correct-today-record", String(studentNo), true);
+      button.setAttribute("aria-label", `清除${displayName}，${displayNo}號，今日${statusLabel}紀錄`);
+      actions.append(button);
+    } else {
+      actions.textContent = "—";
+    }
+    row.append(number, name, status, actions);
+    todayRecordsList.append(row);
+  }
+}
+
+async function loadTodayRecords() {
+  const today = getTaipeiIsoDate();
+  setFormMessage(todayRecordsMessage, "正在讀取今日紀錄…");
+  const currentSetting = reportSettingsRows.find(
+    (setting) => setting.effective_start <= today && setting.effective_end >= today,
+  );
+  const recordsQuery = teacherClient
+    .from("brushing_records")
+    .select("student_no, status, record_date, recorded_at")
+    .eq("record_date", today)
+    .order("student_no");
+  const profilesQuery = currentSetting
+    ? teacherClient
+        .from("student_profiles")
+        .select("student_no, display_no, display_name")
+        .eq("report_setting_id", currentSetting.id)
+        .order("student_no")
+    : Promise.resolve({ data: [], error: null });
+  const [{ data: recordRows, error: recordsError }, { data: profileRows, error: profilesError }] = await Promise.all([
+    recordsQuery,
+    profilesQuery,
+  ]);
+  if (recordsError) throw recordsError;
+  if (profilesError) throw profilesError;
+  todayRecords = new Map((recordRows || []).map((record) => [record.student_no, record]));
+  todayRecordProfiles = new Map((profileRows || []).map((profile) => [profile.student_no, profile]));
+  renderTodayRecords();
+  setFormMessage(todayRecordsMessage, currentSetting ? "" : "今日沒有對應的學期設定，暫以系統座號顯示。", !currentSetting);
+}
+
+function openRecordCorrection(studentNo) {
+  const record = todayRecords.get(studentNo);
+  if (!record) return;
+  const profile = getTodayRecordProfile(studentNo);
+  const displayNo = getStudentDisplayNumber(studentNo, profile.display_no);
+  const displayName = getStudentDisplayName(displayNo, profile.display_name);
+  pendingRecordCorrection = { studentNo, recordDate: record.record_date };
+  correctRecordStudent.textContent = `${displayName}（${displayNo}號）`;
+  correctRecordStatus.textContent = record.status === "completed" ? "完成潔牙" : "請假";
+  correctRecordDate.textContent = record.record_date;
+  correctRecordDialog.showModal();
+}
+
+async function clearTodayRecord(correction) {
+  confirmCorrectRecordButton.disabled = true;
+  setFormMessage(todayRecordsMessage, "正在清除今日紀錄…");
+  try {
+    const { error } = await teacherClient
+      .from("brushing_records")
+      .delete()
+      .eq("student_no", correction.studentNo)
+      .eq("record_date", correction.recordDate);
+    if (error) throw error;
+    await loadTodayRecords();
+    setFormMessage(todayRecordsMessage, "今日紀錄已清除，學生狀態已恢復為未完成。 ");
+  } catch (error) {
+    console.error("清除今日紀錄失敗", error);
+    setFormMessage(todayRecordsMessage, "清除失敗，請確認教師權限及資料庫設定後再試一次。", true);
+  } finally {
+    confirmCorrectRecordButton.disabled = false;
+  }
+}
+
+todayRecordsList.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action='correct-today-record']");
+  if (button) openRecordCorrection(Number(button.dataset.id));
+});
+
+document.querySelector("#refresh-today-records").addEventListener("click", () =>
+  loadTodayRecords().catch(handleInitialLoadError),
+);
+
+confirmCorrectRecordButton.addEventListener("click", () => {
+  if (!pendingRecordCorrection) return;
+  const correction = pendingRecordCorrection;
+  pendingRecordCorrection = null;
+  window.setTimeout(() => clearTodayRecord(correction), 0);
+});
+
+correctRecordDialog.addEventListener("close", () => {
+  if (correctRecordDialog.returnValue !== "confirm") pendingRecordCorrection = null;
+});
 
 function revokeStudentPhotoPreview(studentNo) {
   const url = studentPhotoPreviewUrls.get(studentNo);
@@ -645,11 +774,12 @@ function handleInitialLoadError(error) {
   setFormMessage(reportSettingsMessage, "資料讀取失敗，請檢查網路後重新整理。", true);
   setFormMessage(studentProfilesMessage, "學生資料讀取失敗，請檢查網路後重新整理。", true);
   setFormMessage(calendarMessage, "資料讀取失敗，請檢查網路後重新整理。", true);
+  setFormMessage(todayRecordsMessage, "今日紀錄讀取失敗，請檢查網路後重新整理。", true);
 }
 
 async function loadAllSettings() {
-  await Promise.all([loadUsageDays(), loadReportSettings(), loadCalendar()]);
-  await loadStudentProfiles();
+  await loadReportSettings();
+  await Promise.all([loadUsageDays(), loadCalendar(), loadStudentProfiles(), loadTodayRecords()]);
 }
 
 loginForm.addEventListener("submit", async (event) => {

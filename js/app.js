@@ -152,6 +152,7 @@ function renderCard(studentNo, animate = false) {
   card.dataset.state = !todaySchoolInfo.isSchoolDay ? "offday" : isBusy ? "loading" : record?.status || "incomplete";
   mainButton.disabled = !todaySchoolInfo.isSchoolDay || isBusy;
   leaveButton.disabled = !todaySchoolInfo.isSchoolDay || isBusy;
+  leaveButton.setAttribute("aria-label", `${displayName}，${displayNo}號，今日請假`);
 
   if (!todaySchoolInfo.isSchoolDay) {
     visualTooth.textContent = "☀️";

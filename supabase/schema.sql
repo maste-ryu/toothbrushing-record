@@ -309,6 +309,7 @@ revoke all on table public.student_profiles from anon, authenticated;
 grant select on table public.app_users to authenticated;
 grant select on table public.brushing_records to authenticated;
 grant insert (student_no, record_date, status) on table public.brushing_records to authenticated;
+grant delete on table public.brushing_records to authenticated;
 grant select, insert, update, delete on table public.school_calendar to authenticated;
 grant select on table public.app_settings to authenticated;
 grant update (usage_day_mode) on table public.app_settings to authenticated;
@@ -333,6 +334,13 @@ drop policy if exists brushing_records_teacher_select on public.brushing_records
 create policy brushing_records_teacher_select
 on public.brushing_records
 for select
+to authenticated
+using (private.has_role('teacher'));
+
+drop policy if exists brushing_records_teacher_delete on public.brushing_records;
+create policy brushing_records_teacher_delete
+on public.brushing_records
+for delete
 to authenticated
 using (private.has_role('teacher'));
 

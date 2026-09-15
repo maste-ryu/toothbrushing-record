@@ -220,6 +220,7 @@ button:disabled {
 }
 
 .student-card {
+  --student-photo-size: clamp(150px, 14vw, 220px);
   position: relative;
   display: flex;
   min-width: 0;
@@ -255,7 +256,7 @@ button:disabled {
 
 .student-photo-frame {
   display: grid;
-  width: clamp(150px, 14vw, 220px);
+  width: var(--student-photo-size);
   aspect-ratio: 1;
   flex: 0 0 auto;
   overflow: hidden;
@@ -347,15 +348,30 @@ button:disabled {
 }
 
 .leave-button {
-  flex: 0 0 auto;
-  min-height: clamp(46px, 6.5vh, 64px);
-  margin: 0 clamp(0.8rem, 1.5vw, 1.4rem) clamp(0.8rem, 1.5vh, 1.35rem);
+  position: absolute;
+  z-index: 2;
+  top: clamp(4.25rem, 10vh, 6rem);
+  left: calc(50% + var(--student-photo-size) / 2 - 2.2rem);
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
   color: var(--leave);
-  border: 2px solid #f0ce6e;
-  border-radius: var(--radius-md);
-  background: #fff9e8;
-  font-weight: 900;
+  border: 1.5px solid #e4c66f;
+  border-radius: 999px;
+  background: rgba(255, 249, 232, 0.94);
+  box-shadow: 0 4px 12px rgba(134, 93, 0, 0.1);
+  font-size: clamp(0.82rem, 1vw, 1rem);
+  font-weight: 800;
   cursor: pointer;
+}
+
+.leave-button:hover {
+  border-color: #d4ad3c;
+  background: #fff3ce;
+}
+
+.leave-button:active {
+  transform: scale(0.96);
 }
 
 .student-card[data-state="completed"] {
@@ -795,6 +811,25 @@ select {
   width: 5.5rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.today-records-table .record-status {
+  font-weight: 900;
+}
+
+.today-records-table .record-status.completed {
+  color: var(--completed);
+  background: var(--completed-bg);
+}
+
+.today-records-table .record-status.leave {
+  color: var(--leave);
+  background: var(--leave-bg);
+}
+
+.today-records-table .record-status.incomplete {
+  color: var(--muted);
+  background: #f3f7f8;
 }
 
 .report-table .seat-heading,

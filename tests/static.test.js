@@ -17,6 +17,7 @@ const requiredFiles = [
   "js/report.js",
   "js/settings.js",
   "supabase/schema.sql",
+  "supabase/migrations/20260915_teacher_delete_today_records.sql",
   "SPEC.md",
   "README.md",
 ];
@@ -49,6 +50,8 @@ for (const studentNo of [1, 2]) {
   assert.match(indexHtml, new RegExp(`data-student="${studentNo}"`));
 }
 assert.match(indexHtml, /id="leave-dialog"/);
+assert.match(indexHtml, /class="leave-button"[^>]*aria-label="1號今日請假"[^>]*>請假<\/button>/);
+assert.match(indexHtml, /class="leave-button"[^>]*aria-label="2號今日請假"[^>]*>請假<\/button>/);
 assert.match(indexHtml, /name="username"/);
 assert.match(indexHtml, /id="device-username-display"[\s\S]*?>user<\/output>/);
 assert.match(indexHtml, /id="device-username"[^>]*type="hidden"[^>]*value="user"/);
@@ -66,6 +69,9 @@ assert.match(settingsHtml, /id="usage-days-form"/);
 assert.match(settingsHtml, /id="usage-day-mode"/);
 assert.match(settingsHtml, /id="calendar-form"/);
 assert.match(settingsHtml, /id="student-profiles-form"/);
+assert.match(settingsHtml, /id="today-records-list"/);
+assert.match(settingsHtml, /id="correct-record-dialog"/);
+assert.match(settingsHtml, /id="confirm-correct-record"/);
 assert.match(settingsHtml, /id="student-profile-term"/);
 assert.match(settingsHtml, /id="student-number-1"[^>]*min="1"[^>]*max="99"/);
 assert.match(settingsHtml, /id="student-number-2"[^>]*min="1"[^>]*max="99"/);
@@ -84,6 +90,8 @@ assert.match(schema, /record_date = private\.taipei_today\(\)/);
 assert.match(schema, /private\.is_school_day\(record_date\)/);
 assert.match(schema, /usage_day_mode in \('weekdays', 'everyday'\)/);
 assert.match(schema, /app_settings_teacher_update/);
+assert.match(schema, /grant delete on table public\.brushing_records to authenticated/);
+assert.match(schema, /brushing_records_teacher_delete[\s\S]*for delete[\s\S]*private\.has_role\('teacher'\)/);
 assert.match(schema, /private\.has_role\('kiosk'\)/);
 assert.match(schema, /private\.has_role\('teacher'\)/);
 assert.match(schema, /'student-photos',[\s\S]*false,[\s\S]*2097152/);

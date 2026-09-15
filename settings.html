@@ -40,6 +40,28 @@
         </header>
 
         <div class="settings-grid">
+          <section class="settings-panel" aria-labelledby="today-records-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">今日更正</p>
+                <h2 id="today-records-title">更正今日紀錄</h2>
+              </div>
+              <button id="refresh-today-records" class="ghost-button compact" type="button">重新整理</button>
+            </div>
+
+            <p class="muted">僅教師可清除今天誤登的「完成潔牙」或「請假」紀錄。清除後會恢復為未完成，學生端不能自行更改。</p>
+            <div class="data-table-wrap">
+              <table class="data-table today-records-table">
+                <caption class="sr-only">今日學生潔牙紀錄</caption>
+                <thead>
+                  <tr><th>座號</th><th>姓名</th><th>今日狀態</th><th>操作</th></tr>
+                </thead>
+                <tbody id="today-records-list"></tbody>
+              </table>
+            </div>
+            <p id="today-records-message" class="form-message" role="status" aria-live="polite"></p>
+          </section>
+
           <section class="settings-panel" aria-labelledby="report-settings-title">
             <div class="section-heading">
               <div>
@@ -242,6 +264,19 @@
         </div>
       </section>
     </main>
+
+    <dialog id="correct-record-dialog" class="confirm-dialog" aria-labelledby="correct-record-dialog-title">
+      <form method="dialog">
+        <div class="dialog-icon" aria-hidden="true">📝</div>
+        <h2 id="correct-record-dialog-title">清除今日紀錄？</h2>
+        <p><strong id="correct-record-student"></strong>目前為「<strong id="correct-record-status"></strong>」。</p>
+        <p>清除 <span id="correct-record-date"></span> 的紀錄後，狀態將恢復為未完成。</p>
+        <div class="dialog-actions">
+          <button value="cancel" class="secondary-button">取消</button>
+          <button id="confirm-correct-record" value="confirm" class="warning-button">確認清除</button>
+        </div>
+      </form>
+    </dialog>
 
     <script type="module" src="js/settings.js"></script>
   </body>
