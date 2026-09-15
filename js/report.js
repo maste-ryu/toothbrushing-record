@@ -1,7 +1,7 @@
 import { requireAppRole, signInForRole, signOut } from "./auth.js";
 import {
+  calculateMonthlyExecutionSummary,
   calculateStudentStats,
-  formatStudentReportLabel,
   getMonthBounds,
   getTaipeiIsoDate,
   getTaipeiYearMonth,
@@ -23,6 +23,10 @@ const reportSchool = document.querySelector("#report-school");
 const reportTitle = document.querySelector("#report-title");
 const reportMeta = document.querySelector("#report-meta");
 const reportTable = document.querySelector("#report-table");
+const summaryStudentCount = document.querySelector("#summary-student-count");
+const summaryNotExecuted = document.querySelector("#summary-not-executed");
+const summaryExecuted = document.querySelector("#summary-executed");
+const summaryExecutionRate = document.querySelector("#summary-execution-rate");
 
 let reportLoadSequence = 0;
 
@@ -63,18 +67,29 @@ function renderReport({ yearMonth, dates, calendarRows, recordRows, profileRows,
   const [year, month] = yearMonth.split("-").map(Number);
 
   reportSchool.textContent = settings?.school_name || "尚未設定學校名稱";
-  reportTitle.textContent = settings?.form_title || "學生潔牙紀錄表";
+  reportTitle.textContent = settings
+    ? `${settings.academic_year}學年度第${settings.semester}學期　${settings.form_title || "學生潔牙紀錄表"}`
+    : "學生潔牙紀錄表";
   reportMeta.textContent = settings
-    ? `${settings.academic_year}學年度第${settings.semester}學期　${month}月份　${settings.class_name}`
+    ? `${settings.class_name}　（${month}）月份`
     : `${year}年${month}月（尚未設定學年度、學期及班級）`;
 
   const thead = reportTable.tHead;
   const tbody = reportTable.tBodies[0];
+  const tfoot = reportTable.tFoot || reportTable.createTFoot();
   thead.replaceChildren();
   tbody.replaceChildren();
+  tfoot.replaceChildren();
 
   const dateRow = document.createElement("tr");
-  dateRow.append(createCell("th", "日期", ["row-heading"]));
+  const seatHeading = createCell("th", "座號", ["seat-heading"]);
+  seatHeading.rowSpan = 3;
+  seatHeading.scope = "col";
+  dateRow.append(seatHeading);
+  const nameHeading = createCell("th", "姓名", ["name-heading"]);
+  nameHeading.rowSpan = 3;
+  nameHeading.scope = "col";
+  dateRow.append(nameHeading);
   for (const isoDate of dates) {
     const info = resolveSchoolDay(isoDate, calendarByDate, usageDayMode);
     const cell = createCell("th", String(Number(isoDate.slice(-2))), getDateClasses(isoDate, info, isoDate > today));
@@ -82,16 +97,13 @@ function renderReport({ yearMonth, dates, calendarRows, recordRows, profileRows,
     dateRow.append(cell);
   }
 
-  for (const label of ["完成", "請假", "應潔牙", "完成率"]) {
-    const cell = createCell("th", label, ["summary-heading"]);
-    cell.scope = "col";
-    cell.rowSpan = 3;
-    dateRow.append(cell);
-  }
+  const totalHeading = createCell("th", "合計", ["total-heading"]);
+  totalHeading.scope = "col";
+  totalHeading.rowSpan = 3;
+  dateRow.append(totalHeading);
   thead.append(dateRow);
 
   const weekdayRow = document.createElement("tr");
-  weekdayRow.append(createCell("th", "星期", ["row-heading"]));
   for (const isoDate of dates) {
     const info = resolveSchoolDay(isoDate, calendarByDate, usageDayMode);
     weekdayRow.append(createCell("td", getWeekdayLabel(isoDate), getDateClasses(isoDate, info, isoDate > today)));
@@ -99,7 +111,6 @@ function renderReport({ yearMonth, dates, calendarRows, recordRows, profileRows,
   thead.append(weekdayRow);
 
   const holidayRow = document.createElement("tr");
-  holidayRow.append(createCell("th", "假別", ["row-heading"]));
   for (const isoDate of dates) {
     const info = resolveSchoolDay(isoDate, calendarByDate, usageDayMode);
     const cell = createCell("td", "", getDateClasses(isoDate, info, isoDate > today));
@@ -116,13 +127,10 @@ function renderReport({ yearMonth, dates, calendarRows, recordRows, profileRows,
     const profile = profilesByStudent.get(studentNo);
     const displayNo = getStudentDisplayNumber(studentNo, profile?.display_no);
     const row = document.createElement("tr");
-    const heading = createCell(
-      "th",
-      formatStudentReportLabel(displayNo, profile?.display_name),
-      ["row-heading"],
-    );
-    heading.scope = "row";
-    row.append(heading);
+    const seatCell = createCell("th", String(displayNo), ["seat-cell"]);
+    seatCell.scope = "row";
+    row.append(seatCell);
+    row.append(createCell("td", profile?.display_name?.trim() || `${displayNo}號同學`, ["name-cell"]));
 
     for (const isoDate of dates) {
       const info = resolveSchoolDay(isoDate, calendarByDate, usageDayMode);
@@ -144,12 +152,46 @@ function renderReport({ yearMonth, dates, calendarRows, recordRows, profileRows,
     }
 
     const stats = calculateStudentStats({ studentNo, dates, calendarByDate, recordsByKey, today, usageDayMode });
-    row.append(createCell("td", String(stats.completed), ["summary-cell"]));
-    row.append(createCell("td", String(stats.leave), ["summary-cell"]));
-    row.append(createCell("td", String(stats.expected), ["summary-cell"]));
-    row.append(createCell("td", stats.rate, ["summary-cell"]));
+    row.append(createCell("td", String(stats.completed), ["total-cell"]));
     tbody.append(row);
   }
+
+  const totalRow = document.createElement("tr");
+  const totalLabel = createCell("th", "合計", ["total-label"]);
+  totalLabel.colSpan = 2;
+  totalLabel.scope = "row";
+  totalRow.append(totalLabel);
+  let monthlyCompleted = 0;
+  for (const isoDate of dates) {
+    const info = resolveSchoolDay(isoDate, calendarByDate, usageDayMode);
+    const isFuture = isoDate > today;
+    const classes = getDateClasses(isoDate, info, isFuture);
+    let value = "";
+    if (!info.isSchoolDay) {
+      value = "／";
+    } else if (!isFuture) {
+      const completed = STUDENT_NUMBERS.filter(
+        (studentNo) => recordsByKey.get(`${studentNo}:${isoDate}`)?.status === "completed",
+      ).length;
+      monthlyCompleted += completed;
+      value = String(completed);
+    }
+    totalRow.append(createCell("td", value, classes));
+  }
+  totalRow.append(createCell("td", String(monthlyCompleted), ["total-cell"]));
+  tfoot.append(totalRow);
+
+  const summary = calculateMonthlyExecutionSummary({
+    dates,
+    calendarByDate,
+    recordsByKey,
+    today,
+    usageDayMode,
+  });
+  summaryStudentCount.textContent = String(summary.studentCount);
+  summaryNotExecuted.textContent = String(summary.notExecuted);
+  summaryExecuted.textContent = String(summary.executed);
+  summaryExecutionRate.textContent = summary.rate;
 }
 
 async function loadReport() {

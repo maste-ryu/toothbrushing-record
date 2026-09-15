@@ -164,3 +164,29 @@ export function calculateStudentStats({ studentNo, dates, calendarByDate, record
 
   return { completed, leave, expected, rate: formatRate(completed, expected) };
 }
+
+export function calculateMonthlyExecutionSummary({
+  studentNumbers = STUDENT_NUMBERS,
+  dates,
+  calendarByDate,
+  recordsByKey,
+  today,
+  usageDayMode = "weekdays",
+}) {
+  let executed = 0;
+  let expected = 0;
+
+  for (const studentNo of studentNumbers) {
+    const stats = calculateStudentStats({ studentNo, dates, calendarByDate, recordsByKey, today, usageDayMode });
+    executed += stats.completed;
+    expected += stats.expected;
+  }
+
+  return {
+    studentCount: studentNumbers.length,
+    executed,
+    notExecuted: expected - executed,
+    expected,
+    rate: formatRate(executed, expected),
+  };
+}

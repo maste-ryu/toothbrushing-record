@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   calculateDailyProgress,
+  calculateMonthlyExecutionSummary,
   calculateStudentStats,
   formatStudentReportLabel,
   formatRate,
@@ -107,5 +108,15 @@ assert.deepEqual(calculateDailyProgress(new Map([[1, { status: "leave" }], [2, {
   allComplete: false,
 });
 assert.equal(calculateDailyProgress(new Map(), false).mode, "offday");
+
+assert.deepEqual(
+  calculateMonthlyExecutionSummary({
+    dates: ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-19", "2026-09-21"],
+    calendarByDate,
+    recordsByKey,
+    today: "2026-09-19",
+  }),
+  { studentCount: 2, executed: 2, notExecuted: 3, expected: 5, rate: "40%" },
+);
 
 console.log("core.test.js: all assertions passed");

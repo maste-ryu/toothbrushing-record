@@ -12,16 +12,30 @@
       <article class="report-sheet">
         <header class="report-heading">
           <p>○○國民小學</p>
-          <h2>學生潔牙紀錄表</h2>
-          <p>115學年度第1學期　9月份　二年甲班</p>
+          <h2>115學年度第1學期　學生潔牙紀錄表</h2>
+          <p>二年甲班　（9）月份</p>
         </header>
         <div class="report-table-wrap">
           <table id="preview-table" class="report-table">
             <caption class="sr-only">月報表視覺測試</caption>
             <thead></thead>
             <tbody></tbody>
+            <tfoot></tfoot>
           </table>
         </div>
+        <section class="report-summary" aria-label="月報統計">
+          <p>學生數：<strong>2</strong></p>
+          <p>未執行人次：<strong>1</strong></p>
+          <p>執行人次：<strong>16</strong></p>
+          <p>執行率：<strong>94.1%</strong></p>
+        </section>
+        <section class="report-approvals" aria-label="行政核章">
+          <p>班級導師：<span class="signature-line"></span></p>
+          <p>製表人：<span class="signature-line"></span></p>
+          <p>學務組長：<span class="signature-line"></span></p>
+          <p>輔導主任：<span class="signature-line"></span></p>
+          <p>校長：<span class="signature-line"></span></p>
+        </section>
         <footer class="report-legend"><span>✓ 已完成潔牙</span><span>假 學生請假</span><span>／ 非上課日</span><span>空白 上課日未完成</span></footer>
       </article>
     </main>
@@ -35,35 +49,54 @@
         cell.className = className;
         return cell;
       };
-      const appendSummaries = (row) => ["完成", "請假", "應潔牙", "完成率"].forEach((text) => {
-        const cell = makeCell("th", text, "summary-heading");
-        cell.rowSpan = 3;
-        row.append(cell);
-      });
       const dateRow = document.createElement("tr");
-      dateRow.append(makeCell("th", "日期", "row-heading"));
+      const seatHeading = makeCell("th", "座號", "seat-heading");
+      seatHeading.rowSpan = 3;
+      const nameHeading = makeCell("th", "姓名", "name-heading");
+      nameHeading.rowSpan = 3;
+      dateRow.append(seatHeading, nameHeading);
       days.forEach((day) => dateRow.append(makeCell("th", day, [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "weekend" : "")));
-      appendSummaries(dateRow);
+      const totalHeading = makeCell("th", "合計", "total-heading");
+      totalHeading.rowSpan = 3;
+      dateRow.append(totalHeading);
       table.tHead.append(dateRow);
       const weekdayRow = document.createElement("tr");
-      weekdayRow.append(makeCell("th", "星期", "row-heading"));
       days.forEach((day, index) => weekdayRow.append(makeCell("td", weekdays[index % 7], [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "weekend" : "")));
       table.tHead.append(weekdayRow);
       const holidayRow = document.createElement("tr");
-      holidayRow.append(makeCell("th", "假別", "row-heading"));
       days.forEach((day) => holidayRow.append(makeCell("td", day === 28 ? "教師節" : [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "休" : "", day === 28 || [5, 6, 12, 13, 19, 20, 26, 27].includes(day) ? "not-school-day" : "")));
       table.tHead.append(holidayRow);
-      [1, 2].forEach((studentNo) => {
+      const dailyTotals = days.map(() => 0);
+      [1, 4].forEach((studentNo) => {
         const row = document.createElement("tr");
-        row.append(makeCell("th", `${studentNo}號 ${studentNo === 1 ? "小星" : "小宇"}`, "row-heading"));
-        days.forEach((day) => {
+        row.append(makeCell("th", studentNo, "seat-cell"));
+        row.append(makeCell("th", studentNo === 1 ? "小星" : "小宇", "name-cell"));
+        let completed = 0;
+        days.forEach((day, index) => {
           const off = day === 28 || [5, 6, 12, 13, 19, 20, 26, 27].includes(day);
-          const leave = studentNo === 2 && day === 7;
-          row.append(makeCell("td", off ? "／" : leave ? "假" : day < 14 ? "✓" : "", off ? "not-school-day" : leave ? "leave-mark" : day < 14 ? "completed-mark" : ""));
+          const leave = studentNo === 4 && day === 7;
+          const missed = studentNo === 4 && day === 10;
+          const done = !off && !leave && !missed && day < 14;
+          if (done) {
+            completed += 1;
+            dailyTotals[index] += 1;
+          }
+          row.append(makeCell("td", off ? "／" : leave ? "假" : done ? "✓" : "", off ? "not-school-day" : leave ? "leave-mark" : done ? "completed-mark" : ""));
         });
-        ["9", studentNo === 2 ? "1" : "0", studentNo === 2 ? "12" : "13", studentNo === 2 ? "75%" : "69.2%"].forEach((value) => row.append(makeCell("td", value, "summary-cell")));
+        row.append(makeCell("td", completed, "total-cell"));
         table.tBodies[0].append(row);
       });
+      const totalRow = document.createElement("tr");
+      const totalLabel = makeCell("th", "合計", "total-label");
+      totalLabel.colSpan = 2;
+      totalRow.append(totalLabel);
+      dailyTotals.forEach((total, index) => {
+        const day = days[index];
+        const off = day === 28 || [5, 6, 12, 13, 19, 20, 26, 27].includes(day);
+        totalRow.append(makeCell("td", off ? "／" : day < 14 ? total : "", off ? "not-school-day" : ""));
+      });
+      totalRow.append(makeCell("td", dailyTotals.reduce((sum, total) => sum + total, 0), "total-cell"));
+      table.tFoot.append(totalRow);
     </script>
   </body>
 </html>

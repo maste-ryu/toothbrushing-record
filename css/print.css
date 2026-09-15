@@ -73,6 +73,21 @@
     width: 14mm;
   }
 
+  .report-table .seat-heading,
+  .report-table .seat-cell {
+    width: 8mm;
+  }
+
+  .report-table .name-heading,
+  .report-table .name-cell {
+    width: 25mm;
+  }
+
+  .report-table .total-heading,
+  .report-table .total-cell {
+    width: 9mm;
+  }
+
   .report-table .summary-heading,
   .report-table .summary-cell {
     width: 14mm;
@@ -101,6 +116,28 @@
     margin-top: 2mm;
     color: #000;
     font-size: 7pt;
+  }
+
+  .report-summary {
+    margin-top: 2mm;
+    border-color: #000;
+    font-size: 8pt;
+  }
+
+  .report-summary > div {
+    min-height: 8mm;
+    padding: 1mm 2mm;
+    border-color: #000;
+  }
+
+  .report-approvals {
+    gap: 5mm;
+    margin-top: 7mm;
+    font-size: 8pt;
+  }
+
+  .signature-line {
+    height: 8mm;
   }
 }
 

@@ -54,6 +54,13 @@ assert.match(indexHtml, /id="device-username-display"[\s\S]*?>user<\/output>/);
 assert.match(indexHtml, /id="device-username"[^>]*type="hidden"[^>]*value="user"/);
 assert.doesNotMatch(indexHtml, /id="device-email"/);
 assert.match(reportHtml, /id="teacher-login-form"/);
+assert.match(reportHtml, /id="summary-student-count"/);
+assert.match(reportHtml, /id="summary-not-executed"/);
+assert.match(reportHtml, /id="summary-executed"/);
+assert.match(reportHtml, /id="summary-execution-rate"/);
+for (const approval of ["班級導師", "製表人", "學務組長", "輔導主任", "校長"]) {
+  assert.match(reportHtml, new RegExp(approval));
+}
 assert.match(settingsHtml, /id="report-settings-form"/);
 assert.match(settingsHtml, /id="usage-days-form"/);
 assert.match(settingsHtml, /id="usage-day-mode"/);
